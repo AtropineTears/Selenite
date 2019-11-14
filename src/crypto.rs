@@ -18,6 +18,7 @@ pub trait Keypairs {
     /// ## Algorithm
     /// Shows the Algorithm For The Keypair Being Used
     const ALGORITHM: &'static str;
+    const VERSION: &'static str;
     const PUBLIC_KEY_SIZE: usize;
     const SECRET_KEY_SIZE: usize;
     const SIGNATURE_SIZE: usize;
@@ -92,6 +93,7 @@ pub struct Signature {
 
 
 impl Keypairs for Falcon512Keypair {
+    const VERSION: &'static str = "1.00";
     const ALGORITHM: &'static str = "FALCON512";
     const PUBLIC_KEY_SIZE: usize = 897;
     const SECRET_KEY_SIZE: usize = 0;
@@ -145,7 +147,7 @@ impl Keypairs for Falcon512Keypair {
             Fingerprint: String::from(&self.Fingerprint),
             Message: String::from(Message), // Original UTF-8 Message
             Signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            Version: String::from(&self.Version),
+            Version: String::from(Self::VERSION),
         }
     }
 }
