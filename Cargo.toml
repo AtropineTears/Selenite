@@ -14,3 +14,4 @@ hex = "0.4.0"
 base64 = "0.11.0"
 serde = {version = "1.0.102", features = ["derive"]}
 serde_yaml = "0.8.11"
+blake2-rfc = "0.2.18"

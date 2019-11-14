@@ -5,6 +5,8 @@ use hex;
 // Serialization
 use serde::{Serialize, Deserialize};
 
+use blake2_rfc::blake2b::{blake2b};
+
 
 use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationError};
 use pqcrypto_falcon::falcon512;
@@ -32,19 +34,21 @@ pub trait Keypairs {
     fn export(&self) -> String;
     /// ## Constructs A Keypair
     /// Construct Keypair From Hexadecimal String or str. This will not generate a new keypair.
-    fn construct<T: AsRef<str>>(pk: T, sk: T) -> Self;
+    fn construct<T: AsRef<str>>(pk: T, sk: T, Fingerprint: T, Version: T) -> Self;
     /// Return As Bytes
     fn as_bytes(&self) -> (Vec<u8>,Vec<u8>);
     /// Return Hexadecimal Public Key
     fn public_key(&self) -> String;
     /// Return Hexadecimal Private Key
     fn secret_key(&self) -> String;
+    fn public_key_as_bytes(&self) -> Vec<u8>;
+    fn secret_key_as_bytes(&self) -> Vec<u8>;
     /// ## Keypair Signing
     /// Allows Signing of an Input Using The Keyholder's Secret Key and Returns The Struct Signature.
-    fn sign(&self,input: &str) -> Signature;
+    fn sign(&self,Message: &str) -> Signature;
 }
 pub trait Signatures {
-    fn construct<T: AsRef<str>>(algorithm: T, pk: T, message: T, signature: T) -> Self;
+    fn construct<T: AsRef<str>>(Algorithm: T, pk: T, fingerprint: T, message: T, signature: T, Version: T) -> Self;
     fn verify(&self);
     fn public_key(&self) -> String;
     fn message(&self) -> String;
@@ -54,25 +58,36 @@ pub trait Signatures {
 
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct SphincsKeypair {
-    public: Vec<u8>,
-    secret: Vec<u8>,
+    Algorithm: String,
+    PublicKey: String,
+    PrivateKey: String,
+    Fingerprint: String,
+    Version: String,
 }
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Falcon1024Keypair {
-    public: Vec<u8>,
-    secret: Vec<u8>,
+    Algorithm: String,
+    PublicKey: String,
+    PrivateKey: String,
+    Fingerprint: String,
+    Version: String,
 }
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Falcon512Keypair {
-    public: Vec<u8>,
-    secret: Vec<u8>,
+    Algorithm: String,
+    PublicKey: String,
+    PrivateKey: String,
+    Fingerprint: String,
+    Version: String,
 }
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Signature {
-    algorithm: String,
-    public: String,
-    input: String,
-    signature: String,
+    Algorithm: String,
+    PublicKey: String,
+    Fingerprint: String,
+    Message: String,
+    Signature: String,
+    Version: String,
 }
 
 
@@ -84,53 +99,69 @@ impl Keypairs for Falcon512Keypair {
     
     fn new() -> Self {
         let (pk,sk) = falcon512::keypair();
+        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
 
         Falcon512Keypair {
-            public: pk.as_bytes().to_vec(),
-            secret: sk.as_bytes().to_vec(),
+            Algorithm: String::from(Self::ALGORITHM),
+            PublicKey: hex::encode_upper(pk.as_bytes()),
+            PrivateKey: hex::encode_upper(sk.as_bytes()),
+            Fingerprint: hex::encode_upper(hash.as_bytes()),
+            Version: String::from("1.00")
         }
     }
     fn export(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
-    fn construct<T: AsRef<str>>(pk: T,sk: T) -> Self {
+    fn construct<T: AsRef<str>>(pk: T,sk: T, hash: T, Version: T) -> Self {
         Falcon512Keypair {
-            public: hex::decode(pk.as_ref()).unwrap(),
-            secret: hex::decode(sk.as_ref()).unwrap(),
+            Algorithm: String::from(Self::ALGORITHM),
+            PublicKey: pk.as_ref().to_string(),
+            PrivateKey: sk.as_ref().to_string(),
+            Fingerprint: hash.as_ref().to_string(),
+            Version: Version.as_ref().to_string()
         }
     }
-    // Remove The Clone If Possible
     fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
-        return (self.public.clone(), self.secret.clone())
+        return (hex::decode(&self.PublicKey).unwrap(), hex::decode(&self.PrivateKey).unwrap())
     }
     fn public_key(&self) -> String {
-        return hex::encode_upper(&self.public)
+        return self.PublicKey.clone()
     }
     fn secret_key(&self) -> String {
-        return hex::encode_upper(&self.secret)
+        return self.PrivateKey.clone()
     }
-    fn sign(&self,input: &str) -> Signature {
-        let x = falcon512::detached_sign(input.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret).unwrap());
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PublicKey).unwrap()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PrivateKey).unwrap()
+    }
+    fn sign(&self,Message: &str) -> Signature {
+        let x = falcon512::detached_sign(Message.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         
         return Signature {
-            algorithm: String::from(Self::ALGORITHM), // String
-            public: self.public_key(), // Public Key Hex 
-            input: String::from(input), // Original UTF-8 Message
-            signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            Algorithm: String::from(Self::ALGORITHM), // String
+            PublicKey: self.public_key(), // Public Key Hex
+            Fingerprint: String::from(&self.Fingerprint),
+            Message: String::from(Message), // Original UTF-8 Message
+            Signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            Version: String::from(&self.Version),
         }
     }
 }
 
 impl Signatures for Signature {
-    fn construct<T: AsRef<str>>(algorithm: T, pk: T, message: T, signature: T) -> Self {
-        let alg = algorithm.as_ref();
+    fn construct<T: AsRef<str>>(Algorithm: T, pk: T, fingerprint: T, message: T, Signature: T, Version: T) -> Self {
+        let alg = Algorithm.as_ref();
         
         if alg == "FALCON512" || alg == "FALCON1024" || alg == "SPHINCS+" {
             return Signature {
-                algorithm: String::from(alg),
-                public: String::from(pk.as_ref()),
-                input: String::from(message.as_ref()),
-                signature: String::from(signature.as_ref()),
+                Algorithm: String::from(alg),
+                PublicKey: String::from(pk.as_ref()),
+                Fingerprint: String::from(fingerprint.as_ref()),
+                Message: String::from(message.as_ref()),
+                Signature: String::from(Signature.as_ref()),
+                Version: String::from(Version.as_ref()),
             }
         }
         else {
@@ -139,29 +170,29 @@ impl Signatures for Signature {
         
     }
     fn verify(&self) {
-        if self.algorithm == "FALCON512" {
-            falcon512::verify_detached_signature(&falcon512::DetachedSignature::from_bytes(&base64::decode(&self.signature).unwrap()).unwrap(), &self.input.as_bytes(), &falcon512::PublicKey::from_bytes(&hex::decode(&self.public).unwrap()).unwrap()).unwrap();
+        if self.Algorithm == "FALCON512" {
+            falcon512::verify_detached_signature(&falcon512::DetachedSignature::from_bytes(&base64::decode(&self.Signature).unwrap()).unwrap(), &self.Message.as_bytes(), &falcon512::PublicKey::from_bytes(&hex::decode(&self.PublicKey).unwrap()).unwrap()).unwrap();
         }
-        else if self.algorithm == "FALCON1024" {
-            falcon1024::verify_detached_signature(&falcon1024::DetachedSignature::from_bytes(&base64::decode(&self.signature).unwrap()).unwrap(), &self.input.as_bytes(), &falcon1024::PublicKey::from_bytes(&hex::decode(&self.public).unwrap()).unwrap()).unwrap();
+        else if self.Algorithm == "FALCON1024" {
+            falcon1024::verify_detached_signature(&falcon1024::DetachedSignature::from_bytes(&base64::decode(&self.Signature).unwrap()).unwrap(), &self.Message.as_bytes(), &falcon1024::PublicKey::from_bytes(&hex::decode(&self.PublicKey).unwrap()).unwrap()).unwrap();
         }
-        else if self.algorithm == "SPHINCS+" {
-            sphincsshake256256srobust::verify_detached_signature(&sphincsshake256256srobust::DetachedSignature::from_bytes(&base64::decode(&self.signature).unwrap()).unwrap(), &self.input.as_bytes(), &sphincsshake256256srobust::PublicKey::from_bytes(&hex::decode(&self.public).unwrap()).unwrap()).unwrap();
+        else if self.Algorithm == "SPHINCS+" {
+            sphincsshake256256srobust::verify_detached_signature(&sphincsshake256256srobust::DetachedSignature::from_bytes(&base64::decode(&self.Signature).unwrap()).unwrap(), &self.Message.as_bytes(), &sphincsshake256256srobust::PublicKey::from_bytes(&hex::decode(&self.PublicKey).unwrap()).unwrap()).unwrap();
         }
         else {
             panic!("Cannot Read Algorithm Type")
         }
     }
     fn public_key(&self) -> String {
-        return self.public.clone()
+        return self.PublicKey.clone()
     }
     fn message(&self) -> String {
-        return self.input.clone()
+        return self.Message.clone()
     }
     fn signature(&self) -> String {
-        return self.signature.clone()
+        return self.Signature.clone()
     }
     fn algorithm(&self) -> String {
-        return self.algorithm.clone()
+        return self.Algorithm.clone()
     }
 }

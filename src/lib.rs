@@ -18,12 +18,8 @@ mod tests {
         
         let yaml = keypair.export();
 
-        println!("FALCON512");
-        println!("YAML: {}",yaml);
+        println!("{}",yaml);
         println!();
-        println!("PublicKey: {}",pubkey);
-        println!();
-        println!("SecretKey: {}",secretkey);
 
         let sig = keypair.sign("Hello");
         sig.verify();
