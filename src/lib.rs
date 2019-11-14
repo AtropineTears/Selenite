@@ -15,8 +15,11 @@ mod tests {
         let (pk,sk) = keypair.as_bytes();
         let pubkey = keypair.public_key();
         let secretkey = keypair.secret_key();
+        
+        let yaml = keypair.export();
 
         println!("FALCON512");
+        println!("YAML: {}",yaml);
         println!();
         println!("PublicKey: {}",pubkey);
         println!();

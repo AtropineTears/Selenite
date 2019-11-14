@@ -29,7 +29,8 @@ pub trait Keypairs {
     /// - **FALCON1024**
     /// - **SPHINCS+**
     fn new() -> Self;
-    /// ## Constructs A Keypair From Hexadecimal Representation
+    fn export(&self) -> String;
+    /// ## Constructs A Keypair
     /// Construct Keypair From Hexadecimal String or str. This will not generate a new keypair.
     fn construct<T: AsRef<str>>(pk: T, sk: T) -> Self;
     /// Return As Bytes
@@ -88,6 +89,9 @@ impl Keypairs for Falcon512Keypair {
             public: pk.as_bytes().to_vec(),
             secret: sk.as_bytes().to_vec(),
         }
+    }
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
     }
     fn construct<T: AsRef<str>>(pk: T,sk: T) -> Self {
         Falcon512Keypair {
