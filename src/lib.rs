@@ -18,7 +18,9 @@ mod tests {
         
         let yaml = keypair.export();
 
-        println!("{}",yaml);
+        let x = Falcon512Keypair::import(&yaml);
+
+        println!("{}",x.public_key());
         println!();
 
         let sig = keypair.sign("Hello");

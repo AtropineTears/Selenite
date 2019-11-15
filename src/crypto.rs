@@ -12,7 +12,19 @@ use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationEr
 use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
 use pqcrypto_sphincsplus::sphincsshake256256srobust;
+use pqcrypto_qtesla::qteslapiii;
 
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+pub struct SphincsBlock {
+    Address: String, // 64 byte Public Key | Hash For Cluster and Nonce
+    Cluster: String, // 8 byte
+    Nonce: u64,
+}
+
+
+
+
+//=============================================================================================================================
 
 pub trait Keypairs {    
     /// ## Algorithm
@@ -36,6 +48,9 @@ pub trait Keypairs {
     /// ## Constructs A Keypair
     /// Construct Keypair From Hexadecimal String or str. This will not generate a new keypair.
     fn construct<T: AsRef<str>>(pk: T, sk: T, Fingerprint: T, Version: T) -> Self;
+    /// ## Construct Keypair From YAML
+    /// This function will deserialize the keypair into its respected struct.
+    fn import(yaml: &str) -> Self;
     /// Return As Bytes
     fn as_bytes(&self) -> (Vec<u8>,Vec<u8>);
     /// Return Hexadecimal Public Key
@@ -55,6 +70,20 @@ pub trait Signatures {
     fn message(&self) -> String;
     fn signature(&self) -> String;
     fn algorithm(&self) -> String;
+}
+
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+pub struct BlockCertificate {
+    Algorithm: String,
+    Version: String,
+
+    Address: String, // Hash of Public Key (64 bytes)
+    Nonce: u64, // Proof of Work
+    Cluster: String, // Hash of Public Key (4 bytes)
+    
+    PublicKey: String, // Can Have Two Public Keys; One with a smaller Public Key and large signature, and one with a smaller signature to sign for the chain. 
+    SecondaryKey: Option<String>,
+    Signature: Option<String>,
 }
 
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
@@ -113,6 +142,11 @@ impl Keypairs for Falcon512Keypair {
     }
     fn export(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
+    }
+    // Add Error-Checking
+    fn import(yaml: &str) -> Self {
+        let result: Falcon512Keypair = serde_yaml::from_str(yaml).unwrap();
+        return result
     }
     fn construct<T: AsRef<str>>(pk: T,sk: T, hash: T, Version: T) -> Self {
         Falcon512Keypair {
@@ -180,6 +214,9 @@ impl Signatures for Signature {
         }
         else if self.Algorithm == "SPHINCS+" {
             sphincsshake256256srobust::verify_detached_signature(&sphincsshake256256srobust::DetachedSignature::from_bytes(&base64::decode(&self.Signature).unwrap()).unwrap(), &self.Message.as_bytes(), &sphincsshake256256srobust::PublicKey::from_bytes(&hex::decode(&self.PublicKey).unwrap()).unwrap()).unwrap();
+        }
+        else if self.Algorithm == "qTesla" {
+            //qteslapiii::verify_detached_signature(sig: &DetachedSignature, msg: &[u8], pk: &PublicKey)
         }
         else {
             panic!("Cannot Read Algorithm Type")
