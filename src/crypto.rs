@@ -20,6 +20,9 @@ use pqcrypto_qtesla::qteslapiii;
 
 //=============================================================================================================================
 
+/// # Traits For Keypairs
+/// 
+/// These traits are required to access the methods of the Keypair Structs. They implement basic functionality like conversion from hexadecimal to bytes, serializing/deserializing content, and signing inputs.
 pub trait Keypairs {    
     /// ## Algorithm
     /// Shows the Algorithm For The Keypair Being Used
@@ -55,6 +58,9 @@ pub trait Keypairs {
     /// Allows Signing of an Input Using The Keyholder's Secret Key and Returns The Struct Signature.
     fn sign(&self,message: &str) -> Signature;
 }
+/// # Traits For Signatures
+/// 
+/// These traits are required for properly handling signatures. They allow the serialization/deserialization of signatures, the conversion into bytes, and the verification of signatures.
 pub trait Signatures {
     fn export(&self) -> String;
     fn import(yaml: &str) -> Self;
