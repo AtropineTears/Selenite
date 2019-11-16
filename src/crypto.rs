@@ -5,9 +5,10 @@ use hex;
 // Serialization
 use serde::{Serialize, Deserialize};
 
+// Hashing
 use blake2_rfc::blake2b::{blake2b};
 
-
+// PQcrypto
 use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationError};
 use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
@@ -30,6 +31,8 @@ pub trait Keypairs {
     /// ## Algorithm
     /// Shows the Algorithm For The Keypair Being Used
     const ALGORITHM: &'static str;
+    /// ## Version
+    /// Returns The Version
     const VERSION: &'static str;
     const PUBLIC_KEY_SIZE: usize;
     const SECRET_KEY_SIZE: usize;
@@ -44,10 +47,9 @@ pub trait Keypairs {
     /// - **FALCON1024**
     /// - **SPHINCS+**
     fn new() -> Self;
+    /// ## Serializes To YAML
+    /// This will serialize the contents of the keypair to YAML Format, which can be read with the import function.
     fn export(&self) -> String;
-    /// ## Constructs A Keypair
-    /// Construct Keypair From Hexadecimal String or str. This will not generate a new keypair.
-    fn construct<T: AsRef<str>>(pk: T, sk: T, Fingerprint: T, Version: T) -> Self;
     /// ## Construct Keypair From YAML
     /// This function will deserialize the keypair into its respected struct.
     fn import(yaml: &str) -> Self;
@@ -64,7 +66,8 @@ pub trait Keypairs {
     fn sign(&self,Message: &str) -> Signature;
 }
 pub trait Signatures {
-    fn construct<T: AsRef<str>>(Algorithm: T, pk: T, fingerprint: T, message: T, signature: T, Version: T) -> Self;
+    fn export(&self) -> String;
+    fn import(yaml: &str) -> Self;
     fn verify(&self);
     fn public_key(&self) -> String;
     fn message(&self) -> String;
@@ -72,20 +75,15 @@ pub trait Signatures {
     fn algorithm(&self) -> String;
 }
 
+
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
-pub struct BlockCertificate {
+pub struct qTeslaKeypair {
     Algorithm: String,
+    PublicKey: String,
+    PrivateKey: String,
+    Fingerprint: String,
     Version: String,
-
-    Address: String, // Hash of Public Key (64 bytes)
-    Nonce: u64, // Proof of Work
-    Cluster: String, // Hash of Public Key (4 bytes)
-    
-    PublicKey: String, // Can Have Two Public Keys; One with a smaller Public Key and large signature, and one with a smaller signature to sign for the chain. 
-    SecondaryKey: Option<String>,
-    Signature: Option<String>,
 }
-
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct SphincsKeypair {
     Algorithm: String,
@@ -137,7 +135,7 @@ impl Keypairs for Falcon512Keypair {
             PublicKey: hex::encode_upper(pk.as_bytes()),
             PrivateKey: hex::encode_upper(sk.as_bytes()),
             Fingerprint: hex::encode_upper(hash.as_bytes()),
-            Version: String::from("1.00")
+            Version: String::from(Self::VERSION),
         }
     }
     fn export(&self) -> String {
@@ -147,15 +145,6 @@ impl Keypairs for Falcon512Keypair {
     fn import(yaml: &str) -> Self {
         let result: Falcon512Keypair = serde_yaml::from_str(yaml).unwrap();
         return result
-    }
-    fn construct<T: AsRef<str>>(pk: T,sk: T, hash: T, Version: T) -> Self {
-        Falcon512Keypair {
-            Algorithm: String::from(Self::ALGORITHM),
-            PublicKey: pk.as_ref().to_string(),
-            PrivateKey: sk.as_ref().to_string(),
-            Fingerprint: hash.as_ref().to_string(),
-            Version: Version.as_ref().to_string()
-        }
     }
     fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
         return (hex::decode(&self.PublicKey).unwrap(), hex::decode(&self.PrivateKey).unwrap())
@@ -185,25 +174,180 @@ impl Keypairs for Falcon512Keypair {
         }
     }
 }
+impl Keypairs for Falcon1024Keypair {
+    const VERSION: &'static str = "1.00";
+    const ALGORITHM: &'static str = "FALCON1024";
+    const PUBLIC_KEY_SIZE: usize = 1793;
+    const SECRET_KEY_SIZE: usize = 0;
+    const SIGNATURE_SIZE: usize = 1273;
+    
+    fn new() -> Self {
+        let (pk,sk) = falcon1024::keypair();
+        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+
+        Falcon1024Keypair {
+            Algorithm: String::from(Self::ALGORITHM),
+            PublicKey: hex::encode_upper(pk.as_bytes()),
+            PrivateKey: hex::encode_upper(sk.as_bytes()),
+            Fingerprint: hex::encode_upper(hash.as_bytes()),
+            Version: String::from(Self::VERSION)
+        }
+    }
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
+    }
+    // Add Error-Checking
+    fn import(yaml: &str) -> Self {
+        let result: Falcon1024Keypair = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
+        return (hex::decode(&self.PublicKey).unwrap(), hex::decode(&self.PrivateKey).unwrap())
+    }
+    fn public_key(&self) -> String {
+        return self.PublicKey.clone()
+    }
+    fn secret_key(&self) -> String {
+        return self.PrivateKey.clone()
+    }
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PublicKey).unwrap()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PrivateKey).unwrap()
+    }
+    fn sign(&self,Message: &str) -> Signature {
+        let x = falcon1024::detached_sign(Message.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+        
+        return Signature {
+            Algorithm: String::from(Self::ALGORITHM), // String
+            PublicKey: self.public_key(), // Public Key Hex
+            Fingerprint: String::from(&self.Fingerprint),
+            Message: String::from(Message), // Original UTF-8 Message
+            Signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            Version: String::from(Self::VERSION),
+        }
+    }
+}
+impl Keypairs for SphincsKeypair {
+    const VERSION: &'static str = "1.00";
+    const ALGORITHM: &'static str = "SPHINCS+";
+    const PUBLIC_KEY_SIZE: usize = 64;
+    const SECRET_KEY_SIZE: usize = 128;
+    const SIGNATURE_SIZE: usize = 29_792;
+    
+    fn new() -> Self {
+        let (pk,sk) = sphincsshake256256srobust::keypair();
+        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+
+        SphincsKeypair {
+            Algorithm: String::from(Self::ALGORITHM),
+            PublicKey: hex::encode_upper(pk.as_bytes()),
+            PrivateKey: hex::encode_upper(sk.as_bytes()),
+            Fingerprint: hex::encode_upper(hash.as_bytes()),
+            Version: String::from(Self::VERSION),
+        }
+    }
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
+    }
+    // Add Error-Checking
+    fn import(yaml: &str) -> Self {
+        let result: SphincsKeypair = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
+        return (hex::decode(&self.PublicKey).unwrap(), hex::decode(&self.PrivateKey).unwrap())
+    }
+    fn public_key(&self) -> String {
+        return self.PublicKey.clone()
+    }
+    fn secret_key(&self) -> String {
+        return self.PrivateKey.clone()
+    }
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PublicKey).unwrap()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PrivateKey).unwrap()
+    }
+    fn sign(&self,Message: &str) -> Signature {
+        let x = sphincsshake256256srobust::detached_sign(Message.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+        
+        return Signature {
+            Algorithm: String::from(Self::ALGORITHM), // String
+            PublicKey: self.public_key(), // Public Key Hex
+            Fingerprint: String::from(&self.Fingerprint),
+            Message: String::from(Message), // Original UTF-8 Message
+            Signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            Version: String::from(Self::VERSION),
+        }
+    }
+}
+impl Keypairs for qTeslaKeypair {
+    const VERSION: &'static str = "1.00";
+    const ALGORITHM: &'static str = "qTesla";
+    const PUBLIC_KEY_SIZE: usize = 38_432;
+    const SECRET_KEY_SIZE: usize = 12_392;
+    const SIGNATURE_SIZE: usize = 5_664;
+    
+    fn new() -> Self {
+        let (pk,sk) = falcon512::keypair();
+        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+
+        qTeslaKeypair {
+            Algorithm: String::from(Self::ALGORITHM),
+            PublicKey: hex::encode_upper(pk.as_bytes()),
+            PrivateKey: hex::encode_upper(sk.as_bytes()),
+            Fingerprint: hex::encode_upper(hash.as_bytes()),
+            Version: String::from(Self::VERSION),
+        }
+    }
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
+    }
+    // Add Error-Checking
+    fn import(yaml: &str) -> Self {
+        let result: qTeslaKeypair = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
+        return (hex::decode(&self.PublicKey).unwrap(), hex::decode(&self.PrivateKey).unwrap())
+    }
+    fn public_key(&self) -> String {
+        return self.PublicKey.clone()
+    }
+    fn secret_key(&self) -> String {
+        return self.PrivateKey.clone()
+    }
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PublicKey).unwrap()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return hex::decode(&self.PrivateKey).unwrap()
+    }
+    fn sign(&self,Message: &str) -> Signature {
+        let x = qteslapiii::detached_sign(Message.as_bytes(), &qteslapiii::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+        
+        return Signature {
+            Algorithm: String::from(Self::ALGORITHM), // String
+            PublicKey: self.public_key(), // Public Key Hex
+            Fingerprint: String::from(&self.Fingerprint),
+            Message: String::from(Message), // Original UTF-8 Message
+            Signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            Version: String::from(Self::VERSION),
+        }
+    }
+}
 
 impl Signatures for Signature {
-    fn construct<T: AsRef<str>>(Algorithm: T, pk: T, fingerprint: T, message: T, Signature: T, Version: T) -> Self {
-        let alg = Algorithm.as_ref();
-        
-        if alg == "FALCON512" || alg == "FALCON1024" || alg == "SPHINCS+" {
-            return Signature {
-                Algorithm: String::from(alg),
-                PublicKey: String::from(pk.as_ref()),
-                Fingerprint: String::from(fingerprint.as_ref()),
-                Message: String::from(message.as_ref()),
-                Signature: String::from(Signature.as_ref()),
-                Version: String::from(Version.as_ref()),
-            }
-        }
-        else {
-            panic!("No Supported Algorithm Detected")
-        }
-        
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
+    }
+    // Add Error-Checking
+    fn import(yaml: &str) -> Self {
+        let result: Signature = serde_yaml::from_str(yaml).unwrap();
+        return result
     }
     fn verify(&self) {
         if self.Algorithm == "FALCON512" {

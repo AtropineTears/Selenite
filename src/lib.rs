@@ -27,7 +27,10 @@ mod tests {
         sig.verify();
     }
     #[test]
-    fn falcon512_should_fail(){
-        let keypair = Falcon512Keypair::new();
+    fn sphincs_plus(){
+        let keypair = SphincsKeypair::new();
+        let signature = keypair.sign("FFDE");
+        signature.verify();
+        println!("{}",signature.signature());
     }
 }
