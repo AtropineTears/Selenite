@@ -1,10 +1,14 @@
+// Denys The Usage of Unsafe Code and Allows non_camel_case_types 
 #[allow(non_camel_case_types)]
+#[deny(unsafe_code)]
 
 pub mod crypto;
+//mod kem;
 
 #[cfg(test)]
 mod tests {
-    use super::crypto::*;
+    use super::crypto::{Falcon512Keypair, Keypairs, Signatures, SphincsKeypair};
+    //use super::kem;
     //use crypto::{Keypairs,Signatures};
     #[test]
     fn it_works() {

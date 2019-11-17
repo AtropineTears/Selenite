@@ -4,20 +4,33 @@ use selenite::crypto::*;
 #[cfg(test)]
 #[test]
 fn create_falcon_keypair(){
-    let keypair = Falcon512Keypair::new();
-    let yaml = keypair.export();
-    let keypair_from_yaml = Falcon512Keypair::import(&yaml);
-
-    let signature = keypair_from_yaml.sign("FCA1509713AB6871E82CF33EB837032A9E3FA4BB4F5979A5A6FCD2ACD26B6A9015F580638CADCFFC81D94D4B3F4AD326F6F6FF67CD4A0B9DA1ECB74B3833647B");
-    let is_verified = signature.verify();
-
+    println!("========================================");
     println!("Falcon512");
-    println!("==========");
+    println!("========================================");
+    println!("Generating FALCON512 Keypair...");
+    let keypair = Falcon512Keypair::new();
+    println!("[X] Generated Keypair");
+    println!();
+    println!("Serializing To YAML...");
+    let yaml = keypair.export();
+    println!("[X] Serializied");
+    println!("Deserializing To YAML...");
+    let keypair_from_yaml = Falcon512Keypair::import(&yaml);
+    println!("[X] Deserializied");
+    println!();
+    println!("Generating FALCON512 Signature...");
+    let signature = keypair_from_yaml.sign("FCA1509713AB6871E82CF33EB837032A9E3FA4BB4F5979A5A6FCD2ACD26B6A9015F580638CADCFFC81D94D4B3F4AD326F6F6FF67CD4A0B9DA1ECB74B3833647B");
+    println!("[X] Generated Signature...");
+    println!("Verifying FALCON512 Signature...");
+    let is_verified = signature.verify();
+    println!("[X] Verified Signature...");
+    println!();
     println!("Message: {}",signature.message);
     println!();
     println!("Signature: {}",signature.signature);
     println!();
     println!("is_verified: {}",is_verified);
+    println!();
 }
 #[test]
 fn create_falcon1024_keypair(){
@@ -28,8 +41,9 @@ fn create_falcon1024_keypair(){
     let signature = keypair_from_yaml.sign("FCA1509713AB6871E82CF33EB837032A9E3FA4BB4F5979A5A6FCD2ACD26B6A9015F580638CADCFFC81D94D4B3F4AD326F6F6FF67CD4A0B9DA1ECB74B3833647B");
     let is_verified = signature.verify();
 
+    println!("========================================");
     println!("Falcon1024");
-    println!("==========");
+    println!("========================================");
     println!("Message: {}",signature.message);
     println!();
     println!("Signature: {}",signature.signature);

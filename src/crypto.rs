@@ -69,7 +69,7 @@ pub trait Signatures {
     fn message_as_bytes(&self) -> &[u8];
 }
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
-pub struct qTeslaKeypair {
+struct qTeslaKeypair {
     pub algorithm: String,
     pub public_key: String,
     pub private_key: String,
@@ -311,7 +311,6 @@ impl Signatures for Signature {
     fn export(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
-    // Add Error-Checking
     fn import(yaml: &str) -> Self {
         let result: Signature = serde_yaml::from_str(yaml).unwrap();
         return result
