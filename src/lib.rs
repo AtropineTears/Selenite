@@ -1,7 +1,12 @@
+//! # Selenite
+//! 
+//! Lacuna's Core Library consists of all the core components for Lacuna.
+
 // Denys The Usage of Unsafe Code and Allows non_camel_case_types 
 #[allow(non_camel_case_types)]
 #[deny(unsafe_code)]
 
+/// The Core Module For Interacting With Keypairs/Signatures Through Their Traits.
 pub mod crypto;
 //mod kem;
 
@@ -15,6 +20,7 @@ mod tests {
         // Generates a Falcon512 Keypair
         let keypair = Falcon512Keypair::new();
         
+        // Exports To YAML
         let yaml = keypair.export();
 
         let x = Falcon512Keypair::import(&yaml);

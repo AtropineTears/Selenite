@@ -1,3 +1,33 @@
+//! # Selenite: Lacuna's Core Crypto Module
+//! 
+//! Lacuna's Core Crypto Module consists of the structs of keypairs (FALCON512,FALCON1024,SPHINCS+), the signature struct, and most importantly the implemented traits.
+//!
+//! When viewing documentation for a struct, make sure to look at the documentation for the traits **Keypairs** and **Signatures** as these contain the implemented methods.
+//!
+//! ## Example Usage
+//!
+//! ```
+//! use selenite::crypto::*;
+//! 
+//! fn main() {
+//!     // Generates The Respected Keypair
+//!     let keypair = SphincsKeypair::new();
+//! 
+//!     // Signs The Message as a UTF-8 Encoded String
+//!     let mut sig = keypair.sign("message_to_sign");
+//!     
+//!     // Returns a boolean representing whether the signature is valid or not
+//!     let is_verified = sig.verify();
+//! }
+//! ```
+//! ## Serialization
+//! 
+//! Serde-yaml is implemented by default for the serialization/deserialization of the data to the human-readable .yaml format.
+//! 
+//! ## More Information
+//! 
+//! This library is built on bindings to pqcrypto, a portable, post-quantum, cryptographic library.
+
 // Encodings
 use base64;
 use hex;
@@ -14,6 +44,7 @@ use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
 use pqcrypto_sphincsplus::sphincsshake256256srobust;
 use pqcrypto_qtesla::qteslapiii;
+
 
 
 
@@ -76,6 +107,24 @@ struct qTeslaKeypair {
     pub fingerprint: String,
     pub version: String,
 }
+/// ## SPHINCS+ (SHAKE256) Keypair
+/// 
+/// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
+/// 
+/// ```
+/// use selenite::crypto::*;
+/// 
+/// fn main() {
+///     // Generates The Respected Keypair
+///     let keypair = SphincsKeypair::new();
+/// 
+///     // Signs The Message as a UTF-8 Encoded String
+///     let mut sig = keypair.sign("message_to_sign");
+///     
+///     // Returns a boolean representing whether the signature is valid or not
+///     let is_verified = sig.verify();
+/// }
+/// ```
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct SphincsKeypair {
     pub algorithm: String,
@@ -84,6 +133,24 @@ pub struct SphincsKeypair {
     pub fingerprint: String,
     pub version: String,
 }
+/// ## Falcon1024 Keypair
+/// 
+/// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
+/// 
+/// ```
+/// use selenite::crypto::*;
+/// 
+/// fn main() {
+///     // Generates The Respected Keypair
+///     let keypair = Falcon1024Keypair::new();
+/// 
+///     // Signs The Message as a UTF-8 Encoded String
+///     let mut sig = keypair.sign("message_to_sign");
+///     
+///     // Returns a boolean representing whether the signature is valid or not
+///     let is_verified = sig.verify();
+/// }
+/// ```
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Falcon1024Keypair {
     pub algorithm: String,
@@ -92,6 +159,24 @@ pub struct Falcon1024Keypair {
     pub fingerprint: String,
     pub version: String,
 }
+/// ## Falcon512 Keypair
+/// 
+/// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
+/// 
+/// ```
+/// use selenite::crypto::*;
+/// 
+/// fn main() {
+///     // Generates The Respected Keypair
+///     let keypair = Falcon512Keypair::new();
+/// 
+///     // Signs The Message as a UTF-8 Encoded String
+///     let mut sig = keypair.sign("message_to_sign");
+///     
+///     // Returns a boolean representing whether the signature is valid or not
+///     let is_verified = sig.verify();
+/// }
+/// ```
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Falcon512Keypair {
     pub algorithm: String,
@@ -100,6 +185,9 @@ pub struct Falcon512Keypair {
     pub fingerprint: String,
     pub version: String,
 }
+/// ## The Signature Struct
+/// 
+/// This struct contains the fields for signatures and implements the Signatures trait to allow methods on the struct.
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct Signature {
     pub algorithm: String,
