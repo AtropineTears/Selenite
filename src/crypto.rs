@@ -70,9 +70,9 @@ pub trait Keypairs {
     /// Creates A New Keypair From Respected Struct Being Called.
     /// 
     /// Keypair Options:
-    /// - **FALCON512**
-    /// - **FALCON1024**
-    /// - **SPHINCS+**
+    /// - FALCON512
+    /// - FALCON1024
+    /// - SPHINCS+
     fn new() -> Self;
     /// ## Serializes To YAML
     /// This will serialize the contents of the keypair to YAML Format, which can be read with the import function.
@@ -93,8 +93,11 @@ pub trait Keypairs {
 /// 
 /// These traits are required for properly handling signatures. They allow the serialization/deserialization of signatures, the conversion into bytes, and the verification of signatures.
 pub trait Signatures {
+    /// Serializes To YAML
     fn export(&self) -> String;
+    /// Deserializes From YAML
     fn import(yaml: &str) -> Self;
+    /// Verifies a Signature
     fn verify(&self) -> bool;
     fn signature_as_bytes(&self) -> Vec<u8>;
     fn message_as_bytes(&self) -> &[u8];
