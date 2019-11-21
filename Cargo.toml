@@ -6,6 +6,8 @@ edition = "2018"
 description = "A Crate For Post-Quantum Cryptography Certificates Built on PQcrypto"
 repository = "https://github.com/0xSilene/Selenite"
 readme = "README.md"
+keywords = ["cryptography","post-quantum","pqcrypto","sphincs","lacuna"]
+categories = ["cryptography"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -23,4 +25,3 @@ blake2-rfc = "0.2.18"
 
 [dev-dependencies]
 criterion = "0.3"
-
