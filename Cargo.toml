@@ -3,6 +3,9 @@ name = "selenite"
 version = "0.1.0"
 authors = ["0xSilene"]
 edition = "2018"
+description = "A Crate For Post-Quantum Cryptography Certificates Built on PQcrypto"
+repository = "https://github.com/0xSilene/Selenite"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

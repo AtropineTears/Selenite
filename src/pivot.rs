@@ -1,13 +1,5 @@
-pub struct Pivot {
-    crs: String,
-}
-
-pub struct SphincsBlock {
-    id: u64,
-    cluster: u64,
-    nonce: u64,
-    sphincs_pk: String,
-}
+/// Work In Progress
+pub struct Pivot;
 
 impl Pivot {
     pub fn new() -> Self {
