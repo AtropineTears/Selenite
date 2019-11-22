@@ -8,6 +8,7 @@ repository = "https://github.com/0xSilene/Selenite"
 readme = "README.md"
 keywords = ["cryptography","post-quantum","pqcrypto","sphincs","lacuna"]
 categories = ["cryptography"]
+license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
