@@ -1,6 +1,6 @@
 [package]
 name = "selenite"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["0xSilene"]
 edition = "2018"
 description = "A Crate For Post-Quantum Cryptography Certificates Built on PQcrypto"
@@ -22,7 +22,6 @@ hex = "0.4.0"
 base64 = "0.11.0"
 serde = {version = "1.0.102", features = ["derive"]}
 serde_yaml = "0.8.11"
-blake2-rfc = "0.2.18"
 
 [dev-dependencies]
 criterion = "0.3"

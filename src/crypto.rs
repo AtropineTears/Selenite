@@ -35,9 +35,6 @@ use hex;
 // Serialization
 use serde::{Serialize, Deserialize};
 
-// Hashing
-use blake2_rfc::blake2b::{blake2b};
-
 // PQcrypto
 use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationError};
 use pqcrypto_falcon::falcon512;
@@ -102,13 +99,12 @@ pub trait Signatures {
     fn signature_as_bytes(&self) -> Vec<u8>;
     fn message_as_bytes(&self) -> &[u8];
 }
+
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 struct qTeslaKeypair {
     pub algorithm: String,
     pub public_key: String,
     pub private_key: String,
-    pub fingerprint: String,
-    pub version: String,
 }
 /// ## SPHINCS+ (SHAKE256) Keypair
 /// 
@@ -133,8 +129,6 @@ pub struct SphincsKeypair {
     pub algorithm: String,
     pub public_key: String,
     pub private_key: String,
-    pub fingerprint: String,
-    pub version: String,
 }
 /// ## Falcon1024 Keypair
 /// 
@@ -159,8 +153,6 @@ pub struct Falcon1024Keypair {
     pub algorithm: String,
     pub public_key: String,
     pub private_key: String,
-    pub fingerprint: String,
-    pub version: String,
 }
 /// ## Falcon512 Keypair
 /// 
@@ -185,8 +177,6 @@ pub struct Falcon512Keypair {
     pub algorithm: String,
     pub public_key: String,
     pub private_key: String,
-    pub fingerprint: String,
-    pub version: String,
 }
 /// ## The Signature Struct
 /// 
@@ -195,10 +185,8 @@ pub struct Falcon512Keypair {
 pub struct Signature {
     pub algorithm: String,
     pub public_key: String,
-    pub fingerprint: String,
     pub message: String,
     pub signature: String,
-    pub version: String,
 }
 
 
@@ -211,14 +199,12 @@ impl Keypairs for Falcon512Keypair {
     
     fn new() -> Self {
         let (pk,sk) = falcon512::keypair();
-        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+        //let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
 
         Falcon512Keypair {
             algorithm: String::from(Self::ALGORITHM),
             public_key: hex::encode_upper(pk.as_bytes()),
             private_key: hex::encode_upper(sk.as_bytes()),
-            fingerprint: hex::encode_upper(hash.as_bytes()),
-            version: String::from(Self::VERSION),
         }
     }
     fn export(&self) -> String {
@@ -244,10 +230,8 @@ impl Keypairs for Falcon512Keypair {
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
             public_key: self.public_key.clone(), // Public Key Hex
-            fingerprint: String::from(&self.fingerprint),
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            version: String::from(Self::VERSION),
         }
     }
 }
@@ -260,14 +244,12 @@ impl Keypairs for Falcon1024Keypair {
     
     fn new() -> Self {
         let (pk,sk) = falcon1024::keypair();
-        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+        //let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
 
         Falcon1024Keypair {
             algorithm: String::from(Self::ALGORITHM),
             public_key: hex::encode_upper(pk.as_bytes()),
             private_key: hex::encode_upper(sk.as_bytes()),
-            fingerprint: hex::encode_upper(hash.as_bytes()),
-            version: String::from(Self::VERSION)
         }
     }
     fn export(&self) -> String {
@@ -293,10 +275,8 @@ impl Keypairs for Falcon1024Keypair {
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
             public_key: self.public_key.clone(), // Public Key Hex
-            fingerprint: String::from(&self.fingerprint),
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            version: String::from(Self::VERSION),
         }
     }
 }
@@ -309,14 +289,12 @@ impl Keypairs for SphincsKeypair {
     
     fn new() -> Self {
         let (pk,sk) = sphincsshake256256srobust::keypair();
-        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+        //let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
 
         SphincsKeypair {
             algorithm: String::from(Self::ALGORITHM),
             public_key: hex::encode_upper(pk.as_bytes()),
             private_key: hex::encode_upper(sk.as_bytes()),
-            fingerprint: hex::encode_upper(hash.as_bytes()),
-            version: String::from(Self::VERSION),
         }
     }
     fn export(&self) -> String {
@@ -341,10 +319,8 @@ impl Keypairs for SphincsKeypair {
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
             public_key: self.public_key.clone(), // Public Key Hex
-            fingerprint: String::from(&self.fingerprint),
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            version: String::from(Self::VERSION),
         }
     }
 }
@@ -357,14 +333,12 @@ impl Keypairs for qTeslaKeypair {
     
     fn new() -> Self {
         let (pk,sk) = qteslapiii::keypair();
-        let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
+        //let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
 
         qTeslaKeypair {
             algorithm: String::from(Self::ALGORITHM),
             public_key: hex::encode_upper(pk.as_bytes()),
             private_key: hex::encode_upper(sk.as_bytes()),
-            fingerprint: hex::encode_upper(hash.as_bytes()),
-            version: String::from(Self::VERSION),
         }
     }
     fn export(&self) -> String {
@@ -390,10 +364,8 @@ impl Keypairs for qTeslaKeypair {
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
             public_key: self.public_key.clone(), // Public Key Hex
-            fingerprint: String::from(&self.fingerprint),
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            version: String::from(Self::VERSION),
         }
     }
 }
