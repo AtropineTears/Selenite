@@ -1,6 +1,8 @@
 # Selenite
 
-An experimental rust crate for **Post-Quantum Code-Signing Certificates**. All Digital Signatures are **Round Three NIST Post-Quantum Candidates**.
+An experimental rust crate for **Post-Quantum Code-Signing Certificates**.
+
+All Digital Signatures are **Round Three NIST Post-Quantum Candidates** which are listed [here](https://csrc.nist.gov/Projects/post-quantum-cryptography/round-3-submissions).
 
 Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/index.html) for usage.
 
@@ -8,7 +10,7 @@ Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/i
 
 **Digital Signatures:** 
 
-* SPHINCS+ (SHAKE256)
+* SPHINCS+
 
 * FALCON512 | FALCON1024
 
@@ -106,6 +108,16 @@ fn serialize(){
 * **Refactor Code**
 
 * Remove **qteslapiii** which is now broken (but also was coded out awhile ago but not completely)
+
+## Resources
+
+* [NIST Status Report](https://nvlpubs.nist.gov/nistpubs/ir/2020/NIST.IR.8309.pdf)
+
+* [NIST Round Three Submissions](https://csrc.nist.gov/Projects/post-quantum-cryptography/round-3-submissions)
+
+* [PQClean](https://github.com/pqclean/pqclean/)
+
+* [PQcrypto](https://github.com/rustpq/pqcrypto) | [Crate](https://crates.io/crates/pqcrypto)
 
 ## License
 
