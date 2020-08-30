@@ -77,6 +77,24 @@ fn main(){
 }
 ```
 
+### Serialization
+
+You can **Serialize** keypairs to YAML using serde-yaml.
+
+```rust
+fn serialize(){
+    // Generates Keypair
+    let keypair = SphincsKeypair::new();
+    
+    // Serializes Keypair To YAML
+    let yaml = keypair.export();
+    
+    // Deserializes Keypair To Respected Struct
+    let keypair_from_yaml = SphincsKeypair::import(&yaml);
+}
+
+```
+
 ## To-Do
 
 * Add **[Dilithium](https://pq-crystals.org/dilithium/)**, another round three candidate
