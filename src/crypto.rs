@@ -34,17 +34,30 @@ use hex;
 
 // Serialization
 use serde::{Serialize, Deserialize};
+use bincode;
 
 // PQcrypto
 use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationError};
 use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
 use pqcrypto_sphincsplus::sphincsshake256256srobust;
-use pqcrypto_qtesla::qteslapiii;
 
 
+//===INFORMATION===
+// All Serialization can be done through YAML
+// Serialization For Signatures can be done through bincode
 
+// [Keypair Structs]
+// All Keypair Structs come with three fields all being strings
+// - algorithm {FALCON512,FALCON1024,SPHINCS+}
+// - public_key
+// - private_key
 
+// - Public Keys and Private Keys are encoded in hexadecimal;
+// - The Signature of the Signatures struct is encoded in base64
+
+//TODO
+// - Fix bincode serialization parameter
 
 //=============================================================================================================================
 
@@ -90,6 +103,11 @@ pub trait Keypairs {
 /// 
 /// These traits are required for properly handling signatures. They allow the serialization/deserialization of signatures, the conversion into bytes, and the verification of signatures.
 pub trait Signatures {
+    // bincode implementations
+    fn export_to_bincode(&self) -> Vec<u8>;
+        // TODO: Think about changing the type to &[u8] for import
+    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self;
+    
     /// Serializes To YAML
     fn export(&self) -> String;
     /// Deserializes From YAML
@@ -98,14 +116,17 @@ pub trait Signatures {
     fn verify(&self) -> bool;
     fn signature_as_bytes(&self) -> Vec<u8>;
     fn message_as_bytes(&self) -> &[u8];
+    /// # [Security] Match Public Key
+    /// This will match the public key in the struct to another public key you provide to make sure they are the same. The Public Key **must** be in **upperhexadecimal format**.
+    fn match_public_key(&self, pk: String) -> bool;
+    /// # [Security] Match Message
+    /// This will match the message in the struct to the message you provide to make sure they are the same.
+    fn match_message(&self,msg: String) -> bool;
+    /// # [Security] Matches Signatures
+    /// This will match the signature in the struct with a provided signature (in base64 format)
+    fn match_signature(&self,signature: String) -> bool;
 }
 
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
-struct qTeslaKeypair {
-    pub algorithm: String,
-    pub public_key: String,
-    pub private_key: String,
-}
 /// ## SPHINCS+ (SHAKE256) Keypair
 /// 
 /// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
@@ -324,53 +345,14 @@ impl Keypairs for SphincsKeypair {
         }
     }
 }
-impl Keypairs for qTeslaKeypair {
-    const VERSION: &'static str = "1.00";
-    const ALGORITHM: &'static str = "qTesla";
-    const PUBLIC_KEY_SIZE: usize = 38_432;
-    const SECRET_KEY_SIZE: usize = 12_392;
-    const SIGNATURE_SIZE: usize = 5_664;
-    
-    fn new() -> Self {
-        let (pk,sk) = qteslapiii::keypair();
-        //let hash = blake2b(64,&[],hex::encode_upper(pk.as_bytes()).as_bytes());
-
-        qTeslaKeypair {
-            algorithm: String::from(Self::ALGORITHM),
-            public_key: hex::encode_upper(pk.as_bytes()),
-            private_key: hex::encode_upper(sk.as_bytes()),
-        }
-    }
-    fn export(&self) -> String {
-        return serde_yaml::to_string(&self).unwrap();
-    }
-    // Add Error-Checking
-    fn import(yaml: &str) -> Self {
-        let result: qTeslaKeypair = serde_yaml::from_str(yaml).unwrap();
-        return result
-    }
-    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
-        return (hex::decode(&self.public_key).unwrap(), hex::decode(&self.private_key).unwrap())
-    }
-    fn public_key_as_bytes(&self) -> Vec<u8> {
-        return hex::decode(&self.public_key).unwrap()
-    }
-    fn secret_key_as_bytes(&self) -> Vec<u8> {
-        return hex::decode(&self.private_key).unwrap()
-    }
-    fn sign(&self,message: &str) -> Signature {
-        let x = qteslapiii::detached_sign(message.as_bytes(), &qteslapiii::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
-        
-        return Signature {
-            algorithm: String::from(Self::ALGORITHM), // String
-            public_key: self.public_key.clone(), // Public Key Hex
-            message: String::from(message), // Original UTF-8 Message
-            signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-        }
-    }
-}
 
 impl Signatures for Signature {
+    fn export_to_bincode(&self) -> Vec<u8> {
+        return bincode::serialize(&self).unwrap();
+    }
+    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self {
+        return bincode::deserialize(&serde_bincode[..]).unwrap();
+    }
     fn export(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
@@ -378,9 +360,11 @@ impl Signatures for Signature {
         let result: Signature = serde_yaml::from_str(yaml).unwrap();
         return result
     }
+    // Returns message as a byte array
     fn message_as_bytes(&self) -> &[u8] {
         return self.message.as_bytes()
     }
+    // Returns Base64 decoded signature as a vector of bytes
     fn signature_as_bytes(&self) -> Vec<u8> {
         return base64::decode(&self.signature).unwrap()
     }
@@ -412,12 +396,36 @@ impl Signatures for Signature {
                 return true
             }
         }
-        else if self.algorithm == "qTesla" {
-            unimplemented!();
-            //qteslapiii::verify_detached_signature(sig: &DetachedSignature, msg: &[u8], pk: &PublicKey)
-        }
         else {
             panic!("Cannot Read Algorithm Type")
+        }
+    }
+    /// [Security] Match Public Key
+    /// Public Key is Encoded In Upper Hexadecimal
+    fn match_public_key(&self, pk: String) -> bool {
+        if self.public_key == pk {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+    // Message is a UTF-8 Message / String
+    fn match_message(&self, msg: String) -> bool {
+        if self.message == msg {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+    // Signature Is Encoded in Base64
+    fn match_signature(&self, signature: String) -> bool {
+        if self.signature == signature {
+            return true
+        }
+        else {
+            return false
         }
     }
 }
