@@ -210,6 +210,8 @@ pub struct Signature {
     pub signature: String,
 }
 
+pub struct Verify;
+
 
 impl Keypairs for Falcon512Keypair {
     const VERSION: &'static str = "1.00";

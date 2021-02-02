@@ -42,10 +42,10 @@ fn main() {
     let keypair = SphincsKeypair::new();
 
     // Signs The Message as a UTF-8 Encoded String
-    let mut sig = keypair.sign("message_to_sign");
+    let mut signature = keypair.sign("message_to_sign");
 
     // Returns a boolean representing whether the signature is valid or not
-    let is_verified = sig.verify();
+    let is_verified = signature.verify();
 }
 ```
 ### FALCON512/FALCON1024
@@ -72,10 +72,10 @@ fn main(){
     let keypair2 = Falcon1024Keypair::new();
     
     // Signs The Message as a UTF-8 Encoded String using the first keypair (FALCON512)
-    let mut sig = keypair.sign("Message1");
+    let signature = keypair.sign("Message1");
     
     // Returns a boolean representing whether the signature is valid or not
-    let is_verified = sig.verify();
+    let is_verified = signature.verify();
 }
 ```
 
@@ -97,6 +97,22 @@ fn serialize(){
 
 ```
 
+```rust
+fn serialize_signature(){
+    // Generates Keypair
+    let keypair = SphincsKeypair::new();
+
+    // Generates Signature
+    let signature = keypair.sign("Hello World!");
+
+    // [BINCODE] Serialize To Bincode
+    let bincode: Vec<u8> = signature.export_to_bincode();
+
+    // [YAML] Serialize To YAML
+    let yaml = signature.export();
+}
+```
+
 ## To-Do
 
 * Add **[Dilithium](https://pq-crystals.org/dilithium/)**, another round three candidate
@@ -107,7 +123,7 @@ fn serialize(){
 
 * **Refactor Code**
 
-* Remove **qteslapiii** which is now broken (but also was coded out awhile ago but not completely)
+* ~~Remove **qteslapiii** which is now broken (but also was coded out awhile ago but not completely)~~
 
 ## Resources
 
