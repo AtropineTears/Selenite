@@ -4,6 +4,10 @@
 //!
 //! When viewing documentation for a struct, make sure to look at the documentation for the traits **Keypairs** and **Signatures** as these contain the implemented methods.
 //!
+//! ## Security Warning
+//! 
+//! This code **is not** audited and just recomended for **educational purposes**. Feel free to look through the code and help me out with it as the code is a bit... rusty.
+//! 
 //! ## Example Usage
 //!
 //! ```
@@ -20,13 +24,34 @@
 //!     let is_verified = sig.verify();
 //! }
 //! ```
+//! ## How To Use
+//! 
+//! This is based upon my beliefs. You may choose yourself.
+//! 
+//! **SPHINCS+** should be used for code signing as it is quite slow at signing/verifying but is based on some high security assumptions and has a high security bit level.
+//! 
+//! **FALCON512/FALCON1024** is comparable to **RSA2048/RSA4096** and is fast at signing/verifying. It produces much smaller signatures but has a larger public key size (but still quite small).
+//! 
+//! 
 //! ## Serialization
 //! 
 //! Serde-yaml is implemented by default for the serialization/deserialization of the data to the human-readable .yaml format.
 //! 
 //! ## More Information
 //! 
-//! This library is built on bindings to pqcrypto, a portable, post-quantum, cryptographic library.
+//! This library is built on bindings to **pqcrypto**, a portable, post-quantum, cryptographic library.
+//! 
+//! SPHINCS+ reaches a security bit level of **255 bytes** which is well over what is needed and is **Level 5**. I have plans in the future to reduce this so the signature size is smaller.
+//! 
+//! ## References
+//! 
+//! [pqcrypto-rust](https://github.com/rustpq/pqcrypto)
+//! 
+//! [SPHINCS+](https://sphincs.org/)
+//! 
+//! [SPHINCS+ REPO](https://github.com/sphincs/sphincsplus)
+//! 
+//! [Falcon-Sign](https://falcon-sign.info/)
 
 // Encodings
 use base64;
@@ -36,7 +61,7 @@ use hex;
 use serde::{Serialize, Deserialize};
 use bincode;
 
-// PQcrypto
+// PQcrypto Digital Signatures
 use pqcrypto_traits::sign::{PublicKey,SecretKey,DetachedSignature,VerificationError};
 use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
@@ -60,7 +85,14 @@ use pqcrypto_sphincsplus::sphincsshake256256srobust;
 // - Fix bincode serialization parameter
 
 //=============================================================================================================================
-
+/// # Algorithms
+/// This enum lists the algorithms implemented in the crate.
+/// - `SPHINCS_PLUS` uses SPHINCS+ (SHAKE256) (256s) (Robust). The algorithm itself is highly secure and reaches Level 5.
+pub enum KeypairAlgorithms {
+    FALCON512,
+    FALCON1024,
+    SPHINCS_PLUS
+}
 /// # Traits For Keypairs
 /// 
 /// These traits are required to access the methods of the Keypair Structs. They implement basic functionality like conversion from hexadecimal to bytes, serializing/deserializing content, and signing inputs.
@@ -69,8 +101,8 @@ pub trait Keypairs {
     /// Shows the Algorithm For The Keypair Being Used
     const ALGORITHM: &'static str;
     /// ## Version
-    /// Returns The Version
-    const VERSION: &'static str;
+    /// Returns The Version. 0 for unstable test. 1 for first implementation.
+    const VERSION: usize;
     const PUBLIC_KEY_SIZE: usize;
     const SECRET_KEY_SIZE: usize;
     const SIGNATURE_SIZE: usize;
@@ -103,6 +135,7 @@ pub trait Keypairs {
 /// 
 /// These traits are required for properly handling signatures. They allow the serialization/deserialization of signatures, the conversion into bytes, and the verification of signatures.
 pub trait Signatures {
+    fn new(algorithm: &str, pk: &str, signature: &str, message: &str) -> Self;
     // bincode implementations
     fn export_to_bincode(&self) -> Vec<u8>;
         // TODO: Think about changing the type to &[u8] for import
@@ -214,7 +247,7 @@ pub struct Verify;
 
 
 impl Keypairs for Falcon512Keypair {
-    const VERSION: &'static str = "1.00";
+    const VERSION: usize = 0;
     const ALGORITHM: &'static str = "FALCON512";
     const PUBLIC_KEY_SIZE: usize = 897;
     const SECRET_KEY_SIZE: usize = 1281;
@@ -259,7 +292,7 @@ impl Keypairs for Falcon512Keypair {
     }
 }
 impl Keypairs for Falcon1024Keypair {
-    const VERSION: &'static str = "1.00";
+    const VERSION: usize = 0;
     const ALGORITHM: &'static str = "FALCON1024";
     const PUBLIC_KEY_SIZE: usize = 1793;
     const SECRET_KEY_SIZE: usize = 2305;
@@ -304,7 +337,7 @@ impl Keypairs for Falcon1024Keypair {
     }
 }
 impl Keypairs for SphincsKeypair {
-    const VERSION: &'static str = "1.00";
+    const VERSION: usize = 0;
     const ALGORITHM: &'static str = "SPHINCS+";
     const PUBLIC_KEY_SIZE: usize = 64;
     const SECRET_KEY_SIZE: usize = 128;
@@ -349,26 +382,18 @@ impl Keypairs for SphincsKeypair {
 }
 
 impl Signatures for Signature {
-    fn export_to_bincode(&self) -> Vec<u8> {
-        return bincode::serialize(&self).unwrap();
-    }
-    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self {
-        return bincode::deserialize(&serde_bincode[..]).unwrap();
-    }
-    fn export(&self) -> String {
-        return serde_yaml::to_string(&self).unwrap();
-    }
-    fn import(yaml: &str) -> Self {
-        let result: Signature = serde_yaml::from_str(yaml).unwrap();
-        return result
-    }
-    // Returns message as a byte array
-    fn message_as_bytes(&self) -> &[u8] {
-        return self.message.as_bytes()
-    }
-    // Returns Base64 decoded signature as a vector of bytes
-    fn signature_as_bytes(&self) -> Vec<u8> {
-        return base64::decode(&self.signature).unwrap()
+    fn new(algorithm: &str, pk: &str, signature: &str, message: &str) -> Self {
+        if algorithm == "SPHINCS+" || algorithm == "FALCON512" || algorithm == "FALCON1024" {
+            return Signature {
+                algorithm: algorithm.to_owned(),
+                public_key: pk.to_owned(),
+                message: message.to_owned(),
+                signature: signature.to_owned(),
+            }
+        }
+        else {
+            panic!("AlgorithmWrong")
+        }
     }
     fn verify(&self) -> bool {
         if self.algorithm == "FALCON512" {
@@ -402,8 +427,27 @@ impl Signatures for Signature {
             panic!("Cannot Read Algorithm Type")
         }
     }
-    /// [Security] Match Public Key
-    /// Public Key is Encoded In Upper Hexadecimal
+    fn import(yaml: &str) -> Self {
+        let result: Signature = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn export(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap();
+    }
+    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self {
+        return bincode::deserialize(&serde_bincode[..]).unwrap();
+    }
+    fn export_to_bincode(&self) -> Vec<u8> {
+        return bincode::serialize(&self).unwrap();
+    }
+    // Returns message as a byte array
+    fn message_as_bytes(&self) -> &[u8] {
+        return self.message.as_bytes()
+    }
+    // Returns Base64 decoded signature as a vector of bytes
+    fn signature_as_bytes(&self) -> Vec<u8> {
+        return base64::decode(&self.signature).unwrap()
+    }
     fn match_public_key(&self, pk: String) -> bool {
         if self.public_key == pk {
             return true
@@ -428,6 +472,67 @@ impl Signatures for Signature {
         }
         else {
             return false
+        }
+    }
+}
+impl Verify {
+    /// ## Verification
+    /// Verifies Signatures by constructing them and returns a boolean.
+    pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str) -> bool {
+        let alg = match algorithm {
+            KeypairAlgorithms::FALCON512 => "FALCON512",
+            KeypairAlgorithms::FALCON1024 => "FALCON1024",
+            KeypairAlgorithms::SPHINCS_PLUS => "SPHINCS+"
+        };
+        // PK (HEX) | SIG (BASE64) | MESSAGE 
+        let pk_bytes = hex::decode(pk).unwrap();
+        let signature_bytes = base64::decode(signature).unwrap();
+        let message_bytes = message.as_bytes();
+
+        if alg == "FALCON512" {
+            let v: Result<(),VerificationError> = falcon512::verify_detached_signature(&falcon512::DetachedSignature::from_bytes(&signature_bytes).unwrap(), message_bytes, &falcon512::PublicKey::from_bytes(&pk_bytes).unwrap());
+            if v.is_err() {
+                return false
+            }
+            else {
+                return true
+            }
+        }
+        if alg == "FALCON1024" {
+            let v: Result<(),VerificationError> = falcon1024::verify_detached_signature(&falcon1024::DetachedSignature::from_bytes(&signature_bytes).unwrap(), message_bytes, &falcon1024::PublicKey::from_bytes(&pk_bytes).unwrap());
+            if v.is_err() {
+                return false
+            }
+            else {
+                return true
+            }
+        }
+        else if alg == "SPHINCS+" {
+            let v: Result<(),VerificationError> = sphincsshake256256srobust::verify_detached_signature(&sphincsshake256256srobust::DetachedSignature::from_bytes(&signature_bytes).unwrap(), message_bytes, &sphincsshake256256srobust::PublicKey::from_bytes(&pk_bytes).unwrap());
+            if v.is_err() {
+                return false
+            }
+            else {
+                return true
+            }
+        }
+        else {
+            panic!("Cannot Read Algorithm Type")
+        }
+    }
+    /// ## Determines Public Key Algorithm
+    /// This determines the public key algorithm based on its key size (in hexadecimal) and returns a `KeypairAlgorithm` enum.
+    pub fn determine_algorithm(pk: &str) -> KeypairAlgorithms {
+        let length = pk.len();
+
+        if length == 128 {
+            return KeypairAlgorithms::SPHINCS_PLUS
+        }
+        else if length > 1500 && length < 2000 {
+            return KeypairAlgorithms::FALCON512
+        }
+        else {
+            return KeypairAlgorithms::FALCON1024
         }
     }
 }

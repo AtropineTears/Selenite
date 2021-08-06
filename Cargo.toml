@@ -19,6 +19,9 @@ pqcrypto-falcon = "0.2.4"
 pqcrypto-traits = "0.3.3"
 pqcrypto-sphincsplus = "0.5.2"
 
+# Hashing
+blake2-rfc = "0.2.18"
+
 # Encodings
 hex = "0.4.2"
 base64 = "0.13.0"

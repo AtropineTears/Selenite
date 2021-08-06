@@ -1,5 +1,7 @@
 extern crate selenite;
 use selenite::crypto::*;
+use selenite::certificate::*;
+use base64;
 
 #[cfg(test)]
 #[test]
@@ -82,4 +84,18 @@ fn create_sphincs_keypair(){
     println!("End Test");
     println!();
 }
+#[test]
+fn create_sphincs_certificate() {
+    let (cert,_keypair) = SphincsCertificate::new();
+    
+}
+#[test]
+fn create_sphincs_certificate_with_id(){
+    let (cert,_keypair) = SphincsCertificate::new();
+    
+    let sig_bool = cert.verify_signature();
+    let id_bool = cert.verify_id();
 
+    println!("Signature: {}",sig_bool);
+    println!("ID: {}",id_bool);
+}
