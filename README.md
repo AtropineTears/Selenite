@@ -1,5 +1,9 @@
 # Selenite
 
+![Crates.io](https://img.shields.io/crates/v/selenite?style=flat-square)
+[![Build Status](https://travis-ci.org/0xAtropine/Selenite.svg?branch=master)](https://travis-ci.org/0xAtropine/Selenite)
+![Crates.io](https://img.shields.io/crates/l/Selenite?style=flat-square)
+
 An experimental rust crate for **Post-Quantum Code-Signing Certificates**.
 
 All Digital Signatures are **Round Three NIST Post-Quantum Candidates** which are listed [here](https://csrc.nist.gov/Projects/post-quantum-cryptography/round-3-submissions).
