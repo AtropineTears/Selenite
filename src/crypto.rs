@@ -118,13 +118,11 @@ pub trait Keypairs {
     fn new() -> Self;
     /// ## Serializes To YAML
     /// This will serialize the contents of the keypair to YAML Format, which can be read with the import function.
-    fn export(&self) -> String;
+    fn serialize(&self) -> String;
     /// ## Construct Keypair From YAML
     /// This function will deserialize the keypair into its respected struct.
-    fn import(yaml: &str) -> Self;
+    fn deserialize(yaml: &str) -> Self;
     /// Return As Bytes
-    #[deprecated]
-    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>);
     fn public_key_as_bytes(&self) -> Vec<u8>;
     fn secret_key_as_bytes(&self) -> Vec<u8>;
     /// ## Keypair Signing
@@ -137,27 +135,26 @@ pub trait Keypairs {
 pub trait Signatures {
     fn new(algorithm: &str, pk: &str, signature: &str, message: &str) -> Self;
     // bincode implementations
-    fn export_to_bincode(&self) -> Vec<u8>;
+    fn serialize_to_bincode(&self) -> Vec<u8>;
         // TODO: Think about changing the type to &[u8] for import
-    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self;
-    
+    fn deserialize_from_bincode(serde_bincode: Vec<u8>) -> Self;
     /// Serializes To YAML
-    fn export(&self) -> String;
+    fn serialize(&self) -> String;
     /// Deserializes From YAML
-    fn import(yaml: &str) -> Self;
+    fn deserialize(yaml: &str) -> Self;
     /// Verifies a Signature
     fn verify(&self) -> bool;
     fn signature_as_bytes(&self) -> Vec<u8>;
     fn message_as_bytes(&self) -> &[u8];
-    /// # [Security] Match Public Key
+    /// # [Security] Compare Public Key
     /// This will match the public key in the struct to another public key you provide to make sure they are the same. The Public Key **must** be in **upperhexadecimal format**.
-    fn match_public_key(&self, pk: String) -> bool;
-    /// # [Security] Match Message
+    fn compare_public_key(&self, pk: String) -> bool;
+    /// # [Security] Compare Message
     /// This will match the message in the struct to the message you provide to make sure they are the same.
-    fn match_message(&self,msg: String) -> bool;
+    fn compare_message(&self,msg: String) -> bool;
     /// # [Security] Matches Signatures
     /// This will match the signature in the struct with a provided signature (in base64 format)
-    fn match_signature(&self,signature: String) -> bool;
+    fn compare_signature(&self,signature: String) -> bool;
 }
 
 /// ## SPHINCS+ (SHAKE256) Keypair
@@ -263,16 +260,13 @@ impl Keypairs for Falcon512Keypair {
             private_key: hex::encode_upper(sk.as_bytes()),
         }
     }
-    fn export(&self) -> String {
+    fn serialize(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
     // Add Error-Checking
-    fn import(yaml: &str) -> Self {
+    fn deserialize(yaml: &str) -> Self {
         let result: Falcon512Keypair = serde_yaml::from_str(yaml).unwrap();
         return result
-    }
-    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
-        return (hex::decode(&self.public_key).unwrap(), hex::decode(&self.private_key).unwrap())
     }
     fn public_key_as_bytes(&self) -> Vec<u8> {
         return hex::decode(&self.public_key).unwrap()
@@ -308,16 +302,13 @@ impl Keypairs for Falcon1024Keypair {
             private_key: hex::encode_upper(sk.as_bytes()),
         }
     }
-    fn export(&self) -> String {
+    fn serialize(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
     // Add Error-Checking
-    fn import(yaml: &str) -> Self {
+    fn deserialize(yaml: &str) -> Self {
         let result: Falcon1024Keypair = serde_yaml::from_str(yaml).unwrap();
         return result
-    }
-    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
-        return (hex::decode(&self.public_key).unwrap(), hex::decode(&self.private_key).unwrap())
     }
     fn public_key_as_bytes(&self) -> Vec<u8> {
         return hex::decode(&self.public_key).unwrap()
@@ -353,16 +344,13 @@ impl Keypairs for SphincsKeypair {
             private_key: hex::encode_upper(sk.as_bytes()),
         }
     }
-    fn export(&self) -> String {
+    fn serialize(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
     // Add Error-Checking
-    fn import(yaml: &str) -> Self {
+    fn deserialize(yaml: &str) -> Self {
         let result: SphincsKeypair = serde_yaml::from_str(yaml).unwrap();
         return result
-    }
-    fn as_bytes(&self) -> (Vec<u8>,Vec<u8>){
-        return (hex::decode(&self.public_key).unwrap(), hex::decode(&self.private_key).unwrap())
     }
     fn public_key_as_bytes(&self) -> Vec<u8> {
         return hex::decode(&self.public_key).unwrap()
@@ -427,17 +415,17 @@ impl Signatures for Signature {
             panic!("Cannot Read Algorithm Type")
         }
     }
-    fn import(yaml: &str) -> Self {
+    fn deserialize(yaml: &str) -> Self {
         let result: Signature = serde_yaml::from_str(yaml).unwrap();
         return result
     }
-    fn export(&self) -> String {
+    fn serialize(&self) -> String {
         return serde_yaml::to_string(&self).unwrap();
     }
-    fn import_from_bincode(serde_bincode: Vec<u8>) -> Self {
+    fn deserialize_from_bincode(serde_bincode: Vec<u8>) -> Self {
         return bincode::deserialize(&serde_bincode[..]).unwrap();
     }
-    fn export_to_bincode(&self) -> Vec<u8> {
+    fn serialize_to_bincode(&self) -> Vec<u8> {
         return bincode::serialize(&self).unwrap();
     }
     // Returns message as a byte array
@@ -448,7 +436,7 @@ impl Signatures for Signature {
     fn signature_as_bytes(&self) -> Vec<u8> {
         return base64::decode(&self.signature).unwrap()
     }
-    fn match_public_key(&self, pk: String) -> bool {
+    fn compare_public_key(&self, pk: String) -> bool {
         if self.public_key == pk {
             return true
         }
@@ -457,7 +445,7 @@ impl Signatures for Signature {
         }
     }
     // Message is a UTF-8 Message / String
-    fn match_message(&self, msg: String) -> bool {
+    fn compare_message(&self, msg: String) -> bool {
         if self.message == msg {
             return true
         }
@@ -466,7 +454,7 @@ impl Signatures for Signature {
         }
     }
     // Signature Is Encoded in Base64
-    fn match_signature(&self, signature: String) -> bool {
+    fn compare_signature(&self, signature: String) -> bool {
         if self.signature == signature {
             return true
         }

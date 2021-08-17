@@ -46,13 +46,16 @@ pub enum StringFormats {
 /// * The `hash` is a 64 byte hash using blake2b in hexadecimal. It is a hash of the public key (in bytes).
 /// * The `signature` is a signature of the id,pk, and hash combined together.
 /// 
+/// The id is similar to the Serial Number
+/// 
 /// The Certificate should be used to **sign binaries** as it is **slow but very secure (assuming there are no vulnerabilties or side channel attacks)**.
 #[derive(Serialize,Deserialize,Debug,Clone,PartialEq,PartialOrd,Hash,Default)]
 pub struct SphincsCertificate {
     version: usize,
     id: String,
-    pk: String,
     hash: String,
+    pk: String,
+    signature_algorithm: String,
     signature: String,
 }
 
@@ -165,12 +168,12 @@ impl SphincsCertificate {
     ///     assert_eq!(cert.verify_signature(),true);
     /// }
     /// ```
-    pub fn verify_signature(&self) -> bool {
+    fn verify_signature(&self) -> bool {
         let message: String = format!("{} {} {}",self.id,self.pk,self.hash);
         let is_valid: bool = Verify::new(KeypairAlgorithms::SPHINCS_PLUS, &self.pk, &self.signature, &message);
         return is_valid
     }
-    pub fn verify_id(&self) -> bool {
+    fn verify_id(&self) -> bool {
         let hash = SphincsCertificate::convert_to_hash(self.pk.clone());
         let id_base32 = SphincsCertificate::encode_into_base32(&hex::decode(hash.clone()).unwrap());
 
