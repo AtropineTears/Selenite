@@ -23,9 +23,9 @@ mod tests {
         let keypair = Falcon512Keypair::new();
         
         // Exports To YAML
-        let yaml = keypair.export();
+        let yaml = keypair.serialize();
 
-        let x = Falcon512Keypair::import(&yaml);
+        let x = Falcon512Keypair::deserialize(&yaml);
 
         println!("{}",x.public_key);
         println!();

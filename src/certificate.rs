@@ -52,9 +52,11 @@ pub enum StringFormats {
 #[derive(Serialize,Deserialize,Debug,Clone,PartialEq,PartialOrd,Hash,Default)]
 pub struct SphincsCertificate {
     version: usize,
-    id: String,
+    serial_number: String,
+    
     hash: String,
     pk: String,
+    
     signature_algorithm: String,
     signature: String,
 }
