@@ -203,7 +203,7 @@ impl SeleniteCertificate {
     
     /// # New SPHINCS+ Certificate
     /// This function creates a SPHINCS+ Certificate and returns the `SeleniteCertificate` and `Keypair` which can be serialized
-    pub fn new(&self,subject_name: String, subject_type: CertificateType, subject_username: Option<String>, key_usage: Vec<KeyUsage>, contact_email: Option<String>,contact_phone_number: Option<String>, contact_address: Option<String>, description: Option<String>,website: Option<String>,github: Option<String>,reddit: Option<String>,twitter: Option<String>,keybase: Option<String>,btc_address: Option<String>,eth_address: Option<String>,xmr_address: Option<String>,zec_address: Option<String>,contact_backup_email: Option<String>,contact_backup_phone_number: Option<String>,pgp_key: Option<String>,onion_website: Option<String>,backup_pgp_key: Option<String>,last_bitcoin_block_height: Option<usize>,last_bitcoin_block_hash: Option<String>) -> (Self,SphincsKeypair) {
+    pub fn new(subject_name: String, subject_type: CertificateType, subject_username: Option<String>, key_usage: Vec<KeyUsage>, contact_email: Option<String>,contact_phone_number: Option<String>, contact_address: Option<String>,contact_backup_email: Option<String>,contact_backup_phone_number: Option<String>, description: Option<String>,website: Option<String>,github: Option<String>,reddit: Option<String>,twitter: Option<String>,keybase: Option<String>,btc_address: Option<String>,eth_address: Option<String>,xmr_address: Option<String>,zec_address: Option<String>,pgp_key: Option<String>,onion_website: Option<String>,backup_pgp_key: Option<String>,last_bitcoin_block_height: Option<usize>,last_bitcoin_block_hash: Option<String>) -> (Self,SphincsKeypair) {
         let certificate_type: u8 = 0u8;
 
         // Optional
@@ -233,7 +233,7 @@ impl SeleniteCertificate {
         // Fingerprint is 80 bytes (encoded in Base32)
         let fingerprint: String = SeleniteCertificate::encode_into_base32(&hex::decode(blake2b_hash.clone()).unwrap());
 
-        let key_id = SeleniteCertificate::generate_key_id_from_pk(&self);
+        let key_id = SeleniteCertificate::generate_key_id_from_pk(keypair.public_key.clone());
 
         let generation_timestamp = SeleniteCertificate::get_utc_time().0;
         
@@ -505,11 +505,11 @@ impl SeleniteCertificate {
         println!("[DEBUG] This function should debug for maximum protection");
         return SystemTime::now().duration_since(sys_time).expect("Failed To Get Duration Since.")
     }
-    pub fn generate_key_id_from_pk(&self) -> String {
+    pub fn generate_key_id_from_pk(pk: String) -> String {
         // Key ID (6 bytes)
         let mut context = Blake2b::new(6);
     
-        context.update(&hex::decode(&self.pk.as_bytes()).expect("Failed To Decode Hexadecimal"));
+        context.update(&hex::decode(pk.as_bytes()).expect("Failed To Decode Hexadecimal"));
 
         return hex::encode(context.finalize().as_bytes());
     }
