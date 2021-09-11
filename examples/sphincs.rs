@@ -1,4 +1,3 @@
-extern crate selenite;
 use selenite::crypto::*;
 
 fn main(){

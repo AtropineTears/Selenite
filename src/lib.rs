@@ -7,6 +7,7 @@
 #[deny(unsafe_code)]
 
 /// The Core Module For Interacting With Keypairs/Signatures Through Their Traits.
+pub mod constants;
 pub mod crypto;
 pub mod certificate;
 
