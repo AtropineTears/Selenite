@@ -128,24 +128,24 @@ pub struct SeleniteCertificate {
     contact_backup_phone_number: Option<String>,
 
     // Social Media and Website (Optional)
-    twitter: Option<String>,
-    reddit: Option<String>,
-    keybase: Option<String>,
-    website: Option<String>,
-    github: Option<String>,
+    twitter_unverified: Option<String>,
+    reddit_unverified: Option<String>,
+    keybase_unverified: Option<String>,
+    website_unverified: Option<String>,
+    github_unverified: Option<String>,
 
     // onion
-    onion_website: Option<String>,
+    onion_website_unverified: Option<String>,
 
     // PGP
-    pgp_key: Option<String>,
-    backup_pgp_key: Option<String>,
+    pgp_key_unverified: Option<String>,
+    backup_pgp_key_unverified: Option<String>,
 
     // Blockchain
-    btc_address: Option<String>,
-    eth_address: Option<String>,
-    xmr_address: Option<String>,
-    zec_address: Option<String>,
+    btc_address_unverified: Option<String>,
+    eth_address_unverified: Option<String>,
+    xmr_address_unverified: Option<String>,
+    zec_address_unverified: Option<String>,
 
     // Subject Information
         // INDIVIDUAL,ORGANIZATION,OTHER
@@ -203,7 +203,7 @@ impl SeleniteCertificate {
     
     /// # New SPHINCS+ Certificate
     /// This function creates a SPHINCS+ Certificate and returns the `SeleniteCertificate` and `Keypair` which can be serialized
-    pub fn new(subject_name: String, subject_type: CertificateType, subject_username: Option<String>, key_usage: Vec<KeyUsage>, contact_email: Option<String>,contact_phone_number: Option<String>, contact_address: Option<String>,contact_backup_email: Option<String>,contact_backup_phone_number: Option<String>, description: Option<String>,website: Option<String>,github: Option<String>,reddit: Option<String>,twitter: Option<String>,keybase: Option<String>,btc_address: Option<String>,eth_address: Option<String>,xmr_address: Option<String>,zec_address: Option<String>,pgp_key: Option<String>,onion_website: Option<String>,backup_pgp_key: Option<String>,last_bitcoin_block_height: Option<usize>,last_bitcoin_block_hash: Option<String>) -> (Self,SphincsKeypair) {
+    pub fn new(subject_name: String, subject_type: CertificateType, subject_username: Option<String>, key_usage: Vec<KeyUsage>, contact_email: Option<String>,contact_phone_number: Option<String>, contact_address: Option<String>,contact_backup_email: Option<String>,contact_backup_phone_number: Option<String>, description: Option<String>,website_unverified: Option<String>,github_unverified: Option<String>,reddit_unverified: Option<String>,twitter_unverified: Option<String>,keybase_unverified: Option<String>,btc_address_unverified: Option<String>,eth_address_unverified: Option<String>,xmr_address_unverified: Option<String>,zec_address_unverified: Option<String>,pgp_key_unverified: Option<String>,onion_website_unverified: Option<String>,backup_pgp_key_unverified: Option<String>,last_bitcoin_block_height: Option<usize>,last_bitcoin_block_hash: Option<String>) -> (Self,SphincsKeypair) {
         let certificate_type: u8 = 0u8;
 
         // Optional
@@ -244,8 +244,8 @@ impl SeleniteCertificate {
         {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {:?} {} {} {} {} {} {} {} {} {} {} {} {} {} {}
         ",
         crate::constants::SELENITE_VERSION,
-        backup_pgp_key.clone().unwrap_or("No Backup PGP Key".to_string()),
-        btc_address.clone().unwrap_or("No Bitcoin Address".to_string()),
+        backup_pgp_key_unverified.clone().unwrap_or("No Backup PGP Key".to_string()),
+        btc_address_unverified.clone().unwrap_or("No Bitcoin Address".to_string()),
         blake2b_hash,
         certificate_type,
         contact_address.clone().unwrap_or("No Contact Address".to_string()),
@@ -254,29 +254,29 @@ impl SeleniteCertificate {
         contact_email.clone().unwrap_or("No Contact Email".to_string()),
         contact_phone_number.clone().unwrap_or("No Contact Phone Number".to_string()),
         description.clone().unwrap_or("No Description Available".to_string()),
-        eth_address.clone().unwrap_or("No Ethereum Address".to_string()),
+        eth_address_unverified.clone().unwrap_or("No Ethereum Address".to_string()),
         fingerprint,
         generation_timestamp,
-        github.clone().unwrap_or("No GitHub Account".to_string()),
-        onion_website.clone().unwrap_or("No .onion Website".to_string()),
+        github_unverified.clone().unwrap_or("No GitHub Account".to_string()),
+        onion_website_unverified.clone().unwrap_or("No .onion Website".to_string()),
         crate::constants::HASH_ALGORITHM,
         key_id,
-        keybase.clone().unwrap_or("No Keybase Account".to_string()),
+        keybase_unverified.clone().unwrap_or("No Keybase Account".to_string()),
         key_usage,
         last_bitcoin_block_height.unwrap_or(0usize),
         last_bitcoin_block_hash.clone().unwrap_or("No Last Bitcoin Block Hash".to_string()),
         keypair.public_key.clone(),
-        pgp_key.clone().unwrap_or("No PGP Key".to_string()),
-        reddit.clone().unwrap_or("No Reddit Account".to_string()),
+        pgp_key_unverified.clone().unwrap_or("No PGP Key".to_string()),
+        reddit_unverified.clone().unwrap_or("No Reddit Account".to_string()),
         crate::constants::SELENITE_DEVELOPER_ANNOUNCEMENT,
         crate::constants::SIGNATURE_ALGORITHM,
         subject_name,
         subject_type,
         subject_username.clone().unwrap_or("No Username Provided".to_string()),
-        twitter.clone().unwrap_or("No Twitter handle".to_string()),
-        xmr_address.clone().unwrap_or("No XMR Address".to_string()),
-        website.clone().unwrap_or("No Website".to_string()),
-        zec_address.clone().unwrap_or("No ZEC Address".to_string())
+        twitter_unverified.clone().unwrap_or("No Twitter handle".to_string()),
+        xmr_address_unverified.clone().unwrap_or("No XMR Address".to_string()),
+        website_unverified.clone().unwrap_or("No Website".to_string()),
+        zec_address_unverified.clone().unwrap_or("No ZEC Address".to_string())
         );
         let signature = keypair.sign(&appended_data).signature;
 
@@ -286,8 +286,8 @@ impl SeleniteCertificate {
         return (
             SeleniteCertificate {
                 version: crate::constants::SELENITE_VERSION,
-                backup_pgp_key: backup_pgp_key,
-                btc_address: btc_address,
+                backup_pgp_key_unverified: backup_pgp_key_unverified,
+                btc_address_unverified: btc_address_unverified,
                 blake2b_hash: blake2b_hash,
 
                 certificate_type: certificate_type,
@@ -297,30 +297,30 @@ impl SeleniteCertificate {
                 contact_email: contact_email,
                 contact_phone_number: contact_phone_number,
                 description: description,
-                eth_address: eth_address,
+                eth_address_unverified: eth_address_unverified,
                 //expiration_date: Utc.ymd(2021, 7, 8).and_hms(9, 10, 11),
                 fingerprint: fingerprint,
                 generation_timestamp: generation_timestamp,
-                github: github,
-                onion_website: onion_website,
+                github_unverified: github_unverified,
+                onion_website_unverified: onion_website_unverified,
                 hash_algorithm: crate::constants::HASH_ALGORITHM.to_string(),
                 key_id: key_id,
-                keybase: keybase,
+                keybase_unverified: keybase_unverified,
                 key_usage: key_usage,
                 last_bitcoin_block_height: last_bitcoin_block_height,
                 last_bitcoin_block_hash: last_bitcoin_block_hash,
                 pk: keypair.public_key.clone(),
-                pgp_key: pgp_key,
-                reddit: reddit,
+                pgp_key_unverified: pgp_key_unverified,
+                reddit_unverified: reddit_unverified,
                 selenite_developer_announcement: crate::constants::SELENITE_DEVELOPER_ANNOUNCEMENT.to_string(),
                 signature_algorithm: crate::constants::SIGNATURE_ALGORITHM.to_string(),
                 subject_name: subject_name,
                 subject_type: subject_type,
                 subject_username: subject_username,
-                twitter: twitter,
-                xmr_address: xmr_address,
-                website: website,
-                zec_address: zec_address,
+                twitter_unverified: twitter_unverified,
+                xmr_address_unverified: xmr_address_unverified,
+                website_unverified: website_unverified,
+                zec_address_unverified: zec_address_unverified,
 
                 signature: signature,
             },
