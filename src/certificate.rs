@@ -235,7 +235,7 @@ impl SeleniteCertificate {
 
         let key_id = SeleniteCertificate::generate_key_id_from_pk(keypair.public_key.clone());
 
-        let generation_timestamp = SeleniteCertificate::get_utc_time().0;
+        let generation_timestamp = SeleniteCertificate::get_utc_time();
         
         // Signature
         // 34 attributes
@@ -269,7 +269,7 @@ impl SeleniteCertificate {
         pgp_key_unverified.clone().unwrap_or("No PGP Key".to_string()),
         reddit_unverified.clone().unwrap_or("No Reddit Account".to_string()),
         crate::constants::SELENITE_DEVELOPER_ANNOUNCEMENT,
-        crate::constants::SIGNATURE_ALGORITHM,
+        crate::constants::SIGNATURE_ALGORITHM_SPHINCS,
         subject_name,
         subject_type,
         subject_username.clone().unwrap_or("No Username Provided".to_string()),
@@ -281,7 +281,7 @@ impl SeleniteCertificate {
         let signature = keypair.sign(&appended_data).signature;
 
         // Get Current Time
-        let time = SeleniteCertificate::get_utc_time().0;
+        let time = SeleniteCertificate::get_utc_time();
 
         return (
             SeleniteCertificate {
@@ -313,7 +313,7 @@ impl SeleniteCertificate {
                 pgp_key_unverified: pgp_key_unverified,
                 reddit_unverified: reddit_unverified,
                 selenite_developer_announcement: crate::constants::SELENITE_DEVELOPER_ANNOUNCEMENT.to_string(),
-                signature_algorithm: crate::constants::SIGNATURE_ALGORITHM.to_string(),
+                signature_algorithm: crate::constants::SIGNATURE_ALGORITHM_SPHINCS.to_string(),
                 subject_name: subject_name,
                 subject_type: subject_type,
                 subject_username: subject_username,
@@ -478,8 +478,8 @@ impl SeleniteCertificate {
             return false
         }
     }
-    pub fn get_utc_time() -> (DateTime<Utc>,std::time::SystemTime){
-        return (Utc::now(),SystemTime::now())
+    pub fn get_utc_time() -> DateTime<Utc>{
+        return Utc::now()
     }
     fn format_date(year: i32, month: u32, day: u32) -> DateTime<Utc>{
         return Utc.ymd(year, month, day).and_hms(9, 10, 11);
