@@ -22,6 +22,12 @@ pqcrypto-falcon = "0.2.4"
 pqcrypto-traits = "0.3.3"
 pqcrypto-sphincsplus = "0.6.0"
 
+# other crypto
+ed25519-dalek = "1.0.1"
+
+# randomness
+rand = "0.7.3"
+
 # Hashing
 blake2-rfc = "0.2.18"
 
@@ -45,6 +51,9 @@ log = "0.4.14"
 # URL Encoding
 # https://url.spec.whatwg.org/
 url = "2.2.2"
+
+[dependecies.ed25519-dalek]
+version = "1"
 
 [dev-dependencies]
 criterion = "0.3"

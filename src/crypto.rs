@@ -67,6 +67,16 @@ use pqcrypto_falcon::falcon512;
 use pqcrypto_falcon::falcon1024;
 use pqcrypto_sphincsplus::sphincsshake256256srobust;
 
+extern crate rand;
+extern crate ed25519_dalek;
+
+use rand::rngs::OsRng;
+use ed25519_dalek::Keypair;
+
+use ed25519_dalek::*;
+
+use std::convert::TryInto;
+
 
 //===INFORMATION===
 // All Serialization can be done through YAML
@@ -181,6 +191,13 @@ pub struct SphincsKeypair {
     pub public_key: String,
     pub private_key: String,
 }
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+pub struct ED25519Keypair {
+    pub algorithm: String,
+    pub public_key: Vec<u8>,
+    pub private_key: Vec<u8>,
+}
+
 /// ## Falcon1024 Keypair
 /// 
 /// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
@@ -242,6 +259,61 @@ pub struct Signature {
 
 pub struct Verify;
 
+impl Keypairs for ED25519Keypair{
+    const VERSION: usize = 0;
+    const ALGORITHM: &'static str = "ED25519";
+    const PUBLIC_KEY_SIZE: usize = 32;
+    const SECRET_KEY_SIZE: usize = 32;
+    const SIGNATURE_SIZE: usize = 64;
+
+    fn new() -> Self {
+        let mut csprng = OsRng{};
+        let keypair: ed25519_dalek::Keypair = ed25519_dalek::Keypair::generate(&mut csprng);
+        let bytes: [u8; 64] = keypair.to_bytes();
+
+        let sk = &bytes[0..32];
+        let pk = &bytes[32..64];
+
+        return Self {
+            algorithm: String::from("ED25519"),
+            public_key: pk.to_vec(),
+            private_key: sk.to_vec(),
+        }
+    }
+    fn serialize(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap()
+    }
+    fn deserialize(yaml: &str) -> Self {
+        let result: ED25519Keypair = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return self.public_key.clone()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return self.private_key.clone()
+    }
+    fn sign(&self, message: &str) -> Signature {
+        let mut vector1: Vec<u8> = self.private_key.clone();
+        let mut vector2: Vec<u8> = self.public_key.clone();
+
+        let mut vector_keypair: Vec<u8> = vec![];
+
+        vector_keypair.append(&mut vector1);
+        vector_keypair.append(&mut vector2);
+
+        let keypair = ed25519_dalek::Keypair::from_bytes(&vector_keypair).unwrap();
+        let sig: ed25519_dalek::Signature = keypair.sign(message.as_bytes());
+
+
+        return Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: hex::encode_upper(self.public_key.clone()),
+            message: String::from(message),
+            signature: base64::encode(sig),
+        }
+    }
+}
 
 impl Keypairs for Falcon512Keypair {
     const VERSION: usize = 0;
@@ -410,6 +482,38 @@ impl Signatures for Signature {
             else {
                 return true
             }
+        }
+        else if self.algorithm == "ED25519" {
+            let base64_decoded = base64::decode(self.signature.clone()).unwrap();
+            let hex_decoded = hex::decode(self.public_key.clone()).unwrap();
+            
+            let pk: ed25519_dalek::PublicKey = ed25519_dalek::PublicKey::from_bytes(&hex_decoded).unwrap();
+
+            if base64_decoded.len() == 64 {
+                let mut sig: [u8;64] = [0u8;64];
+                let mut counter = 0usize;
+
+                for i in base64_decoded {
+                    sig[counter] = i;
+                    counter += 1;
+                }
+
+                let signature = ed25519_dalek::Signature::new(sig);
+                let output = pk.verify_strict(self.message.as_bytes(), &signature);
+                
+                match output {
+                    Ok(_v) => return true,
+                    Err(_e) => return false,
+                }
+            }
+            else {
+                return false
+            }
+            
+
+
+
+            return true
         }
         else {
             panic!("Cannot Read Algorithm Type")
