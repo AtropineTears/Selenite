@@ -20,6 +20,8 @@ Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/i
 
 * Dilithium (Unimplemented)
 
+* [Not Post-Quantum] ED25519
+
 ## Example Usage
 
 ### SPHINCS+ (SHAKE256)
@@ -83,6 +85,34 @@ fn main(){
 }
 ```
 
+### ED25519
+
+ED25519 is an elliptic-curve based digital signature by DJB that has small public keys, private keys, and signatures.
+
+It is not post-quantum secure but has been included in this library.
+
+* **Public Key Size:** 32 bytes
+
+* **Private Key Size:** 32 bytes
+
+* **Signature Size:** 64 bytes
+
+
+```rust
+use selenite::crypto::*;
+
+fn main(){
+    // Generates ED25519 Keypair
+    let keypair = ED25519::new();
+    
+    // Signs The Message as a UTF-8 Encoded String using the first keypair (FALCON512)
+    let signature = keypair.sign("Message1");
+    
+    // Returns a boolean representing whether the signature is valid or not
+    let is_verified = signature.verify();
+}
+```
+
 ### Serialization
 
 You can **Serialize** keypairs to YAML using serde-yaml.
@@ -93,10 +123,10 @@ fn serialize(){
     let keypair = SphincsKeypair::new();
     
     // Serializes Keypair To YAML
-    let yaml = keypair.export();
+    let yaml = keypair.serialize();
     
     // Deserializes Keypair To Respected Struct
-    let keypair_from_yaml = SphincsKeypair::import(&yaml);
+    let keypair_from_yaml = SphincsKeypair::deserialize(&yaml);
 }
 
 ```
@@ -110,10 +140,10 @@ fn serialize_signature(){
     let signature = keypair.sign("Hello World!");
 
     // [BINCODE] Serialize To Bincode
-    let bincode: Vec<u8> = signature.export_to_bincode();
+    let bincode: Vec<u8> = signature.serialize_to_bincode();
 
     // [YAML] Serialize To YAML
-    let yaml = signature.export();
+    let yaml = signature.serialize();
 }
 ```
 
@@ -126,8 +156,6 @@ fn serialize_signature(){
 * Add **Tests**
 
 * **Refactor Code**
-
-* ~~Remove **qteslapiii** which is now broken (but also was coded out awhile ago but not completely)~~
 
 ## Resources
 

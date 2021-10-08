@@ -101,7 +101,9 @@ use std::convert::TryInto;
 pub enum KeypairAlgorithms {
     FALCON512,
     FALCON1024,
-    SPHINCS_PLUS
+    SPHINCS_PLUS,
+
+    ED25519
 }
 /// # Traits For Keypairs
 /// 
@@ -191,6 +193,26 @@ pub struct SphincsKeypair {
     pub public_key: String,
     pub private_key: String,
 }
+/// ## ED25519 Keypair
+/// 
+/// ED25519 is an elliptic-curve based digital signature scheme that is used for signing messages securely.
+/// 
+/// It is not post-quantum cryptography but due to its small keypair/signatures and speed, it has been included in the library.
+/// 
+/// ```
+/// use selenite::crypto::*;
+/// 
+/// fn main() {
+///     let keypair = ED25519::new();
+///     
+///     let signature = keypair.sign("This message is being signed.");
+/// 
+///     let is_valid = signature.verify();
+/// 
+///     assert!(is_valid);
+/// 
+/// }
+/// ```
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct ED25519Keypair {
     pub algorithm: String,
@@ -509,11 +531,6 @@ impl Signatures for Signature {
             else {
                 return false
             }
-            
-
-
-
-            return true
         }
         else {
             panic!("Cannot Read Algorithm Type")
@@ -570,11 +587,14 @@ impl Signatures for Signature {
 impl Verify {
     /// ## Verification
     /// Verifies Signatures by constructing them and returns a boolean.
+    /// 
+    /// Currently does not allow verification of ED25519 (non pq crypto)
     pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str) -> bool {
         let alg = match algorithm {
             KeypairAlgorithms::FALCON512 => "FALCON512",
             KeypairAlgorithms::FALCON1024 => "FALCON1024",
-            KeypairAlgorithms::SPHINCS_PLUS => "SPHINCS+"
+            KeypairAlgorithms::SPHINCS_PLUS => "SPHINCS+",
+            KeypairAlgorithms::ED25519 => "ED25519"
         };
         // PK (HEX) | SIG (BASE64) | MESSAGE 
         let pk_bytes = hex::decode(pk).unwrap();
