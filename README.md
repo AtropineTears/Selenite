@@ -1,7 +1,7 @@
 # Selenite
 
 ![Crates.io](https://img.shields.io/crates/v/selenite?style=flat-square)
-[![Build Status](https://travis-ci.org/0xAtropine/Selenite.svg?branch=master)](https://travis-ci.org/0xAtropine/Selenite)
+[![Build Status](https://app.travis-ci.com/AtropineTears/Selenite.svg?branch=master)](https://app.travis-ci.com/AtropineTears/Selenite)
 ![Crates.io](https://img.shields.io/crates/l/Selenite?style=flat-square)
 
 An experimental rust crate for **Post-Quantum Code-Signing Certificates**.
@@ -15,12 +15,10 @@ Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/i
 **Digital Signatures:** 
 
 * SPHINCS+
+* FALCON512 and FALCON1024
+* ED25519**<sup>*</sup>**
 
-* FALCON512 | FALCON1024
-
-* Dilithium (Unimplemented)
-
-* [Not Post-Quantum] ED25519
+\*: Not Post-Quantum Cryptography
 
 ## Example Usage
 
@@ -105,7 +103,7 @@ fn main(){
     // Generates ED25519 Keypair
     let keypair = ED25519::new();
     
-    // Signs The Message as a UTF-8 Encoded String using the first keypair (FALCON512)
+  	// Signs Message
     let signature = keypair.sign("Message1");
     
     // Returns a boolean representing whether the signature is valid or not
@@ -144,6 +142,22 @@ fn serialize_signature(){
 
     // [YAML] Serialize To YAML
     let yaml = signature.serialize();
+}
+```
+
+### Randomness From CSPRNG
+
+Selenite allows you to easily get secure randomness from your operating system.
+
+```rust
+use selenite::random::OsRandom;
+
+fn main() {
+    let randomness_32 = OsRandom::rand_32.expect("Failed To Get Randomness");
+
+    let randomness_64 = OsRandom::rand_64.expect("Failed To Get Randomness");
+
+    let randomness_128 = OsRandom::rand_128.expect("Failed To Get Randomness");
 }
 ```
 
