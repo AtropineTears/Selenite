@@ -168,10 +168,10 @@ pub trait Keypairs {
     /// Allows Signing of an Input Using The Keyholder's Secret Key and Returns The Struct Signature.
     fn sign_str(&self,message: &str) -> Signature;
 
-    /// ## Sign With Hash (Byte Array)
+    /// ## Sign (with Hash)
     /// 
-    /// Sign with Hash takes as input a slice of bytes. It then signs the hash of the bytes as opposed to signing the actual bytes.
-    fn sign_hash(&self, data: &[u8]) -> Signature;
+    /// Signing bytes using `sign_data()` with Hash takes as input a slice of bytes. It then signs the hash of the bytes as opposed to signing the actual bytes.
+    fn sign_data<T: AsRef<[u8]>>(&self, data: T) -> Signature;
 
     /// ## Data as Hexadecimal Hash
     /// 
@@ -326,6 +326,8 @@ pub struct Signature {
     pub public_key: String,
     pub message: String,
     pub signature: String,
+
+    pub is_str: bool,
 }
 
 pub struct Verify;
@@ -442,13 +444,13 @@ impl Keypairs for BLSKeypair {
             public_key: pk,
             message: String::from(message),
             signature: final_signature,
-            is_signed_hash: false,
+            is_str: true,
         }
 
     }
-    fn sign_hash(&self,data: &[u8]) -> Signature {
+    fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
         let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("[BLS12_381|0x0003] Failed To Deserialize Private Key For BLS12_381");
-        let final_hash = Self::data_as_hexadecimal_hash(data);
+        let final_hash = Self::data_as_hexadecimal_hash(data.as_ref());
 
         // Sign Hash of Data
         let signature = key.sign(final_hash.clone());
@@ -463,7 +465,7 @@ impl Keypairs for BLSKeypair {
             public_key: pk,
             message: final_hash,
             signature: final_signature,
-            is_signed_hash: true,
+            is_str: false,
         }
 
     }
@@ -539,12 +541,12 @@ impl Keypairs for ED25519Keypair{
             public_key: hex::encode_upper(self.public_key.clone()),
             message: String::from(message),
             signature: base64::encode(sig),
-            is_signed_hash: false,
+            is_str: true,
         }
     }
-    fn sign_hash(&self, data: &[u8]) -> Signature {
+    fn sign_data<T: AsRef<[u8]>>(&self, data: T) -> Signature {
         // Hash Message As Blake2b (64 bytes)
-        let final_message_hash = Self::data_as_hexadecimal_hash(data);
+        let final_message_hash = Self::data_as_hexadecimal_hash(data.as_ref());
 
         // Public Keys and Private Keys
         let mut vector1: Vec<u8> = self.private_key.clone();
@@ -567,7 +569,8 @@ impl Keypairs for ED25519Keypair{
             public_key: hex::encode_upper(self.public_key.clone()),
             message: final_message_hash,
             signature: base64::encode(sig),
-            is_signed_hash: true,
+
+            is_str: false,
         }
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
@@ -629,11 +632,11 @@ impl Keypairs for Falcon512Keypair {
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            is_signed_hash: false,
+            is_str: true,
         }
     }
-    fn sign_hash(&self,data: &[u8]) -> Signature {
-        let hex_hash = Self::data_as_hexadecimal_hash(data);
+    fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data.as_ref());
         let signature = falcon512::detached_sign(hex_hash.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
 
         return Signature {
@@ -641,7 +644,7 @@ impl Keypairs for Falcon512Keypair {
             public_key: self.public_key.clone(),
             message: hex_hash,
             signature: base64::encode(signature.as_bytes()),
-            is_signed_hash: true,
+            is_str: false,
         }
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
@@ -709,11 +712,11 @@ impl Keypairs for Falcon1024Keypair {
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            is_signed_hash: false,
+            is_str: true,
         }
     }
-    fn sign_hash(&self,data: &[u8]) -> Signature {
-        let hex_hash = Self::data_as_hexadecimal_hash(data);
+    fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data.as_ref());
         let signature = falcon1024::detached_sign(hex_hash.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
 
         return Signature {
@@ -721,7 +724,7 @@ impl Keypairs for Falcon1024Keypair {
             public_key: self.public_key.clone(),
             message: hex_hash,
             signature: base64::encode(signature.as_bytes()),
-            is_signed_hash: true,
+            is_str: false,
         }
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
@@ -788,11 +791,11 @@ impl Keypairs for SphincsKeypair {
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
-            is_signed_hash: false,
+            is_str: true,
         }
     }
-    fn sign_hash(&self,data: &[u8]) -> Signature {
-        let hex_hash = Self::data_as_hexadecimal_hash(data);
+    fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data.as_ref());
         let signature = sphincsshake256256srobust::detached_sign(hex_hash.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
 
         return Signature {
@@ -800,7 +803,7 @@ impl Keypairs for SphincsKeypair {
             public_key: self.public_key.clone(),
             message: hex_hash,
             signature: base64::encode(signature.as_bytes()),
-            is_signed_hash: true,
+            is_str: false,
         }
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
@@ -837,7 +840,7 @@ impl Signatures for Signature {
                 public_key: pk.to_owned(),
                 message: message.to_owned(),
                 signature: signature.to_owned(),
-                is_signed_hash: false,
+                is_str: true,
             }
         }
         else {
@@ -967,7 +970,7 @@ impl Verify {
     /// Verifies Signatures by constructing them and returns a boolean.
     /// 
     /// Currently does not allow verification of ED25519 (non pq crypto)
-    pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str,is_signed_hash: bool) -> bool {
+    pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str) -> bool {
         
         let alg = match algorithm {
             KeypairAlgorithms::FALCON512 => "FALCON512",
