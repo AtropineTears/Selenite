@@ -73,9 +73,16 @@ extern crate ed25519_dalek;
 use rand::rngs::OsRng;
 use ed25519_dalek::Keypair;
 
+use bls_signatures::*;
+use bls_signatures::Serialize as Ser;
+
 use ed25519_dalek::*;
 
+use crate::random::OsRandom;
+
+
 use std::convert::TryInto;
+
 
 
 //===INFORMATION===
@@ -220,6 +227,13 @@ pub struct ED25519Keypair {
     pub private_key: Vec<u8>,
 }
 
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+pub struct BLSKeypair {
+    pub algorithm: String,
+    pub public_key: Vec<u8>,
+    pub private_key: Vec<u8>,
+}
+
 /// ## Falcon1024 Keypair
 /// 
 /// When using this keypair or looking at its documentation, please look at its implemented trait **Keypairs** for its methods.
@@ -280,6 +294,58 @@ pub struct Signature {
 }
 
 pub struct Verify;
+
+impl Keypairs for BLSKeypair {
+    const VERSION: usize = 0;
+    const ALGORITHM: &'static str = "BLS12_381";
+    const PUBLIC_KEY_SIZE: usize = 0usize;
+    const SECRET_KEY_SIZE: usize = 0;
+    const SIGNATURE_SIZE: usize = 0;
+
+    fn new() -> Self {
+        let randomness = OsRandom::rand_64().expect("Failed To Get Randomness");
+        let secret_key = bls_signatures::PrivateKey::new(randomness);
+
+        let secret_key_bytes = secret_key.as_bytes();
+
+        let public_key = secret_key.public_key().as_bytes();
+
+        return Self {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: public_key,
+            private_key: secret_key_bytes,
+        }
+    }
+    fn serialize(&self) -> String {
+        return serde_yaml::to_string(&self).unwrap()
+    }
+    fn deserialize(yaml: &str) -> Self {
+        let result: BLSKeypair = serde_yaml::from_str(yaml).unwrap();
+        return result
+    }
+    fn public_key_as_bytes(&self) -> Vec<u8> {
+        return self.public_key.clone()
+    }
+    fn secret_key_as_bytes(&self) -> Vec<u8> {
+        return self.private_key.clone()
+    }
+    fn sign(&self,message: &str) -> Signature {
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
+        let signature = key.sign(message);
+
+        // Encoded In Hexadecimal
+        let final_signature = base64::encode(signature.as_bytes());
+        let pk = hex::encode_upper(self.public_key);
+
+        return Signature {
+            algorithm: self.algorithm,
+            public_key: pk,
+            message: String::from(message),
+            signature: final_signature,
+        }
+
+    }
+}
 
 impl Keypairs for ED25519Keypair{
     const VERSION: usize = 0;
