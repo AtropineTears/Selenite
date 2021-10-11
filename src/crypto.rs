@@ -672,6 +672,8 @@ impl Verify {
             KeypairAlgorithms::FALCON512 => "FALCON512",
             KeypairAlgorithms::FALCON1024 => "FALCON1024",
             KeypairAlgorithms::SPHINCS_PLUS => "SPHINCS+",
+            
+            // Not Post-Quantum
             KeypairAlgorithms::ED25519 => "ED25519",
             KeypairAlgorithms::BLS12_381 => "BLS12_381",
         };
@@ -707,6 +709,26 @@ impl Verify {
                 return true
             }
         }
+        else if alg  == "ED25519" {
+            let mut sig_array: [u8;64] = [0;64];
+
+            let pk = hex::decode(pk).expect("Failed To Decode Public Key For ED25519");
+            let sig = base64::decode(signature).expect("Failed To Decode Signature From Base64 For ED25519");
+            let message_as_bytes = message.as_bytes();
+
+            for x in 0..sig.len() {
+                sig_array[x] = sig[x];
+            }
+
+            let pk: ed25519_dalek::PublicKey = ed25519_dalek::PublicKey::from_bytes(&pk).expect("Failed To Convert To Public Key For ED25519");
+            let signature: ed25519_dalek::Signature = ed25519_dalek::Signature::new(sig_array);
+
+            let is_valid = pk.verify_strict(&message_as_bytes, &signature);
+            match is_valid {
+                Ok(_) => return true,
+                Err(_) => return false,
+            }
+        }
         else if alg == "BLS12_381" {
             let pk = hex::decode(pk).expect("Failed To Decode Public Key For BLS12_381");
             let sig = base64::decode(signature).expect("Failed To Decode Signature From Base64");
@@ -715,7 +737,7 @@ impl Verify {
             let final_pk = bls_signatures::PublicKey::from_bytes(&pk).expect("Failed To Convert To Public Key For BLS12_381");
             let final_sig = bls_signatures::Signature::from_bytes(&sig).expect("Failed To Convert To Signature For BLS12_381");
 
-            let is_valid = bls_signatures::verify_messages(&final_sig, &vec![message_as_bytes], &[final_pk]);
+            let is_valid: bool = bls_signatures::verify_messages(&final_sig, &vec![message_as_bytes], &[final_pk]);
 
             return is_valid
         }
