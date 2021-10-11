@@ -110,7 +110,8 @@ pub enum KeypairAlgorithms {
     FALCON1024,
     SPHINCS_PLUS,
 
-    ED25519
+    ED25519,
+    BLS12_381,
 }
 /// # Traits For Keypairs
 /// 
@@ -335,10 +336,10 @@ impl Keypairs for BLSKeypair {
 
         // Encoded In Hexadecimal
         let final_signature = base64::encode(signature.as_bytes());
-        let pk = hex::encode_upper(self.public_key);
+        let pk = hex::encode_upper(&self.public_key);
 
         return Signature {
-            algorithm: self.algorithm,
+            algorithm: self.algorithm.clone(),
             public_key: pk,
             message: String::from(message),
             signature: final_signature,
@@ -598,6 +599,17 @@ impl Signatures for Signature {
                 return false
             }
         }
+        else if self.algorithm == "BLS12_381" {
+            let base64_decoded = base64::decode(&self.signature).expect("Failed To Decoded Base64 For BLS12_381");
+            let hex_decoded = hex::decode(&self.public_key).expect("Failed To Decode Hexadecimal");
+
+            let pk = bls_signatures::PublicKey::from_bytes(&hex_decoded).expect("Failed To Convert From Bytes To Signature In Verification Function For Public Key");
+            let signature = bls_signatures::Signature::from_bytes(&base64_decoded).expect("Failed To Convert From Bytes To Signature In Verification Function For Signature");
+
+            let is_valid: bool = bls_signatures::verify_messages(&signature, &vec![self.message.as_bytes()], &[pk]);
+
+            return is_valid
+        }
         else {
             panic!("Cannot Read Algorithm Type")
         }
@@ -660,7 +672,8 @@ impl Verify {
             KeypairAlgorithms::FALCON512 => "FALCON512",
             KeypairAlgorithms::FALCON1024 => "FALCON1024",
             KeypairAlgorithms::SPHINCS_PLUS => "SPHINCS+",
-            KeypairAlgorithms::ED25519 => "ED25519"
+            KeypairAlgorithms::ED25519 => "ED25519",
+            KeypairAlgorithms::BLS12_381 => "BLS12_381",
         };
         // PK (HEX) | SIG (BASE64) | MESSAGE 
         let pk_bytes = hex::decode(pk).unwrap();
@@ -693,6 +706,18 @@ impl Verify {
             else {
                 return true
             }
+        }
+        else if alg == "BLS12_381" {
+            let pk = hex::decode(pk).expect("Failed To Decode Public Key For BLS12_381");
+            let sig = base64::decode(signature).expect("Failed To Decode Signature From Base64");
+            let message_as_bytes = message.as_bytes();
+
+            let final_pk = bls_signatures::PublicKey::from_bytes(&pk).expect("Failed To Convert To Public Key For BLS12_381");
+            let final_sig = bls_signatures::Signature::from_bytes(&sig).expect("Failed To Convert To Signature For BLS12_381");
+
+            let is_valid = bls_signatures::verify_messages(&final_sig, &vec![message_as_bytes], &[final_pk]);
+
+            return is_valid
         }
         else {
             panic!("Cannot Read Algorithm Type")

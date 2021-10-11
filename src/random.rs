@@ -21,26 +21,21 @@ impl OsRandom {
     pub fn rand_32() -> Result<[u8; 32], getrandom::Error> {
         let mut buf = [0u8; 32];
         getrandom::getrandom(&mut buf)?;
-        Ok(buf)
+        return Ok(buf);
     }
     pub fn rand_48() -> Result<[u8; 48], getrandom::Error> {
         let mut buf = [0u8; 48];
         getrandom::getrandom(&mut buf)?;
-        Ok(buf)
+        return Ok(buf);
     }
     pub fn rand_64() -> Result<[u8; 64], getrandom::Error> {
         let mut buf = [0u8; 64];
         getrandom::getrandom(&mut buf)?;
-        Ok(buf)
+        return Ok(buf);
     }
     pub fn rand_128() -> Result<[u8; 128], getrandom::Error> {
         let mut buf = [0u8; 128];
         getrandom::getrandom(&mut buf)?;
-        Ok(buf)
-    }
-    pub fn rand_256() -> Result<u8; 256>, getrandom::Error> {
-        let mut buf = [0u8; 256];
-        getrandom::getrandom(&mut buf)?;
-        Ok(buf)
+        return Ok(buf);
     }
 }
