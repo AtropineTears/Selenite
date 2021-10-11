@@ -278,7 +278,7 @@ impl SeleniteCertificate {
         website_unverified.clone().unwrap_or("No Website".to_string()),
         zec_address_unverified.clone().unwrap_or("No ZEC Address".to_string())
         );
-        let signature = keypair.sign(&appended_data).signature;
+        let signature = keypair.sign_str(&appended_data).signature;
 
         // Get Current Time
         let time = SeleniteCertificate::get_utc_time();

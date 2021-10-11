@@ -1,4 +1,4 @@
-//! # Selenite: Lacuna's Core Crypto Module
+//! # Selenite: A Core Crypto Module
 //! 
 //! Lacuna's Core Crypto Module consists of the structs of keypairs (FALCON512,FALCON1024,SPHINCS+), the signature struct, and most importantly the implemented traits.
 //!
@@ -53,9 +53,16 @@
 //! 
 //! [Falcon-Sign](https://falcon-sign.info/)
 
+// Errors
+use blake2_rfc::blake2b::Blake2bResult;
+use crate::sel_errors::SeleniteErrors;
+
 // Encodings
 use base64;
 use hex;
+
+// Logging
+use log::{warn,info,debug,error};
 
 // Serialization
 use serde::{Serialize, Deserialize};
@@ -75,6 +82,8 @@ use ed25519_dalek::Keypair;
 
 use bls_signatures::*;
 use bls_signatures::Serialize as Ser;
+
+use blake2_rfc::blake2b::{Blake2b,blake2b};
 
 use ed25519_dalek::*;
 
@@ -113,6 +122,11 @@ pub enum KeypairAlgorithms {
     ED25519,
     BLS12_381,
 }
+
+pub enum SignatureType {
+    String,
+    Bytes,
+}
 /// # Traits For Keypairs
 /// 
 /// These traits are required to access the methods of the Keypair Structs. They implement basic functionality like conversion from hexadecimal to bytes, serializing/deserializing content, and signing inputs.
@@ -145,9 +159,28 @@ pub trait Keypairs {
     /// Return As Bytes
     fn public_key_as_bytes(&self) -> Vec<u8>;
     fn secret_key_as_bytes(&self) -> Vec<u8>;
+
+    fn return_public_key_as_hex(&self) -> String;
+    fn return_secret_key_as_hex(&self) -> String;
+
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors>;
     /// ## Keypair Signing
     /// Allows Signing of an Input Using The Keyholder's Secret Key and Returns The Struct Signature.
-    fn sign(&self,message: &str) -> Signature;
+    fn sign_str(&self,message: &str) -> Signature;
+
+    /// ## Sign With Hash (Byte Array)
+    /// 
+    /// Sign with Hash takes as input a slice of bytes. It then signs the hash of the bytes as opposed to signing the actual bytes.
+    fn sign_hash(&self, data: &[u8]) -> Signature;
+
+    /// ## Data as Hexadecimal Hash
+    /// 
+    /// This function takes the data as a vector of bytes
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String;
+    /// ## Data as Hash (in bytes)
+    /// 
+    /// This function returns the hash of the data as a vector of bytes
+    fn data_as_hash(data: &[u8]) -> Vec<u8>;
 }
 /// # Traits For Signatures
 /// 
@@ -189,7 +222,7 @@ pub trait Signatures {
 ///     let keypair = SphincsKeypair::new();
 /// 
 ///     // Signs The Message as a UTF-8 Encoded String
-///     let mut sig = keypair.sign("message_to_sign");
+///     let mut sig = keypair.sign_str("message_to_sign");
 ///     
 ///     // Returns a boolean representing whether the signature is valid or not
 ///     let is_verified = sig.verify();
@@ -213,7 +246,7 @@ pub struct SphincsKeypair {
 /// fn main() {
 ///     let keypair = ED25519::new();
 ///     
-///     let signature = keypair.sign("This message is being signed.");
+///     let signature = keypair.sign_str("This message is being signed.");
 /// 
 ///     let is_valid = signature.verify();
 /// 
@@ -228,6 +261,7 @@ pub struct ED25519Keypair {
     pub private_key: Vec<u8>,
 }
 
+/// ## BLS12_381 Curve
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct BLSKeypair {
     pub algorithm: String,
@@ -247,7 +281,7 @@ pub struct BLSKeypair {
 ///     let keypair = Falcon1024Keypair::new();
 /// 
 ///     // Signs The Message as a UTF-8 Encoded String
-///     let mut sig = keypair.sign("message_to_sign");
+///     let mut sig = keypair.sign_str("message_to_sign");
 ///     
 ///     // Returns a boolean representing whether the signature is valid or not
 ///     let is_verified = sig.verify();
@@ -271,7 +305,7 @@ pub struct Falcon1024Keypair {
 ///     let keypair = Falcon512Keypair::new();
 /// 
 ///     // Signs The Message as a UTF-8 Encoded String
-///     let mut sig = keypair.sign("message_to_sign");
+///     let mut sig = keypair.sign_str("message_to_sign");
 ///     
 ///     // Returns a boolean representing whether the signature is valid or not
 ///     let is_verified = sig.verify();
@@ -296,12 +330,62 @@ pub struct Signature {
 
 pub struct Verify;
 
+impl BLSKeypair {
+    /// # Aggregation Function
+    /// 
+    /// **Note:** Signatures must be in Base64 format.
+    /// 
+    /// **Info:** Aggregation is only allowed for BLS12_381 (BLSKeypair).
+    /// 
+    /// ---
+    /// 
+    /// ### Description
+    /// 
+    /// This function aggregates (or combines) Base64-encoded signatures for BLS12_381 (`BLSKeypair`). This can be used to reduce the number of signatures into a single signature.
+    /// 
+    /// ---
+    /// ### Errors
+    /// 
+    /// The function returns `SeleniteErrors::BLSAggregationFailed` if an error occurs. It will panic if no signatures are passed to the function. It will also panic if conversion and decoding fails.
+    pub fn aggregate(signatures: Vec<String>) -> Result<bls_signatures::Signature, SeleniteErrors> {
+        let num_of_signatures = signatures.len();
+        let mut v: Vec<bls_signatures::Signature> = vec![];
+
+        log::info!("[INFO] BLS12_381: Aggregating Digital Signatures.");
+        log::info!("[INFO] BLS12_381: Aggregating {} Signatures Into A Single Signature.",num_of_signatures);
+
+        if num_of_signatures == 0 {
+            log::error!("[ERROR] BLS12_381: No Signatures Provided To Aggregation Function. Operating Failed.");
+            panic!("[BLS12_381|0x0002] No Signatures Provided To Aggregation Function");
+        }
+
+
+        for sig in signatures {
+            let decoded_sig = base64::decode(sig).expect("[BLS12_381|0x0000] Failed To Decode From Base64 During Aggregation of Signatures");
+            let final_signature = bls_signatures::Signature::from_bytes(&decoded_sig).expect("[BLS12_381|0x0001] Failed To Convert To `bls_signature::Signature` when converting from bytes.");
+            v.push(final_signature);
+        }
+        let aggregated_signature = bls_signatures::aggregate(&v);
+
+        match aggregated_signature {
+            Ok(bls_sig) => {
+                log::info!("[INFO] BLS12_381: Finished Aggregation of Signatures. No Problems Detected.");
+                return Ok(bls_sig)
+            }
+            Err(_) => {
+                log::error!("[ERROR] Failed To Aggregate Signatures For BLS12_381 Signatures.");
+                return Err(SeleniteErrors::BLSAggregationFailed)
+            }
+        }
+    }
+}
+
 impl Keypairs for BLSKeypair {
     const VERSION: usize = 0;
     const ALGORITHM: &'static str = "BLS12_381";
-    const PUBLIC_KEY_SIZE: usize = 0usize;
-    const SECRET_KEY_SIZE: usize = 0;
-    const SIGNATURE_SIZE: usize = 0;
+    const PUBLIC_KEY_SIZE: usize = 48usize;
+    const SECRET_KEY_SIZE: usize = 32usize;
+    const SIGNATURE_SIZE: usize = 96usize;
 
     fn new() -> Self {
         let randomness = OsRandom::rand_64().expect("Failed To Get Randomness");
@@ -328,9 +412,24 @@ impl Keypairs for BLSKeypair {
         return self.public_key.clone()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
+        log::warn!("[WARN|0x1004] The Secret Key For a BLS12_381 Keypair Was Just Returned In Bytes Form");
         return self.private_key.clone()
     }
-    fn sign(&self,message: &str) -> Signature {
+    fn return_public_key_as_hex(&self) -> String {
+        return hex::encode_upper(&self.public_key)
+    }
+    fn return_secret_key_as_hex(&self) -> String {
+        log::warn!("[WARN|0x1004] The Secret Key For a BLS12_381 Keypair Was Just Returned In Hexadecimal Form");
+        return hex::encode_upper(&self.private_key)
+    }
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
+        let h = hex::decode(s);
+        match h {
+            Ok(v) => return Ok(v),
+            Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
+        }
+    }
+    fn sign_str(&self,message: &str) -> Signature {
         let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
         let signature = key.sign(message);
 
@@ -343,8 +442,40 @@ impl Keypairs for BLSKeypair {
             public_key: pk,
             message: String::from(message),
             signature: final_signature,
+            is_signed_hash: false,
         }
 
+    }
+    fn sign_hash(&self,data: &[u8]) -> Signature {
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("[BLS12_381|0x0003] Failed To Deserialize Private Key For BLS12_381");
+        let final_hash = Self::data_as_hexadecimal_hash(data);
+
+        // Sign Hash of Data
+        let signature = key.sign(final_hash.clone());
+
+        // Encoded In Hexadecimal and Base64
+        let final_signature = base64::encode(signature.as_bytes());
+        let pk = hex::encode_upper(&self.public_key);
+
+
+        return Signature {
+            algorithm: self.algorithm.clone(),
+            public_key: pk,
+            message: final_hash,
+            signature: final_signature,
+            is_signed_hash: true,
+        }
+
+    }
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let hex_hash: String = hex::encode_upper(hash.as_bytes());
+        return hex_hash
+    }
+    fn data_as_hash(data: &[u8]) -> Vec<u8> {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let bytes: Vec<u8> = hash.as_bytes().to_vec();
+        return bytes
     }
 }
 
@@ -380,9 +511,17 @@ impl Keypairs for ED25519Keypair{
         return self.public_key.clone()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
+        log::warn!("[WARN|0x1003] The Secret Key For a ED25519 Keypair Was Just Returned In Bytes Form");
         return self.private_key.clone()
     }
-    fn sign(&self, message: &str) -> Signature {
+    fn return_public_key_as_hex(&self) -> String {
+        return hex::encode_upper(&self.public_key)
+    }
+    fn return_secret_key_as_hex(&self) -> String {
+        log::warn!("[WARN|0x1003] The Secret Key For a ED25519 Keypair Was Just Returned In Hexadecimal Form");
+        return hex::encode_upper(&self.private_key)
+    }
+    fn sign_str(&self, message: &str) -> Signature {
         let mut vector1: Vec<u8> = self.private_key.clone();
         let mut vector2: Vec<u8> = self.public_key.clone();
 
@@ -400,7 +539,53 @@ impl Keypairs for ED25519Keypair{
             public_key: hex::encode_upper(self.public_key.clone()),
             message: String::from(message),
             signature: base64::encode(sig),
+            is_signed_hash: false,
         }
+    }
+    fn sign_hash(&self, data: &[u8]) -> Signature {
+        // Hash Message As Blake2b (64 bytes)
+        let final_message_hash = Self::data_as_hexadecimal_hash(data);
+
+        // Public Keys and Private Keys
+        let mut vector1: Vec<u8> = self.private_key.clone();
+        let mut vector2: Vec<u8> = self.public_key.clone();
+
+        // Init Keypair Vector
+        let mut vector_keypair: Vec<u8> = vec![];
+
+        // Append To Vector
+        vector_keypair.append(&mut vector1);
+        vector_keypair.append(&mut vector2);
+
+        // Keypair
+        let keypair = ed25519_dalek::Keypair::from_bytes(&vector_keypair).unwrap();
+        let sig: ed25519_dalek::Signature = keypair.sign(&hex::decode(&final_message_hash).expect("[ED25519|0x0000] Failed To Decode From Hexadecimal For ED25519 Signing Hash"));
+
+
+        return Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: hex::encode_upper(self.public_key.clone()),
+            message: final_message_hash,
+            signature: base64::encode(sig),
+            is_signed_hash: true,
+        }
+    }
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
+        let h = hex::decode(s);
+        match h {
+            Ok(v) => return Ok(v),
+            Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
+        }
+    }
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let hex_hash: String = hex::encode_upper(hash.as_bytes());
+        return hex_hash
+    }
+    fn data_as_hash(data: &[u8]) -> Vec<u8> {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let bytes = hash.as_bytes().to_vec();
+        return bytes
     }
 }
 
@@ -433,9 +618,10 @@ impl Keypairs for Falcon512Keypair {
         return hex::decode(&self.public_key).unwrap()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
+        log::warn!("[WARN|0x1001] The Secret Key For a FALCON512 Keypair Was Just Returned In Bytes Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign(&self,message: &str) -> Signature {
+    fn sign_str(&self,message: &str) -> Signature {
         let x = falcon512::detached_sign(message.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         
         return Signature {
@@ -443,7 +629,44 @@ impl Keypairs for Falcon512Keypair {
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            is_signed_hash: false,
         }
+    }
+    fn sign_hash(&self,data: &[u8]) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data);
+        let signature = falcon512::detached_sign(hex_hash.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.public_key.clone(),
+            message: hex_hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_signed_hash: true,
+        }
+    }
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
+        let h = hex::decode(s);
+        match h {
+            Ok(v) => return Ok(v),
+            Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
+        }
+    }
+    fn return_public_key_as_hex(&self) -> String {
+        return self.public_key.clone()
+    }
+    fn return_secret_key_as_hex(&self) -> String {
+        log::warn!("[WARN|0x1001] The Secret Key For a FALCON512 Keypair Was Just Returned In Hexadecimal Form");
+        return self.private_key.clone()
+    }
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let hex_hash: String = hex::encode_upper(hash.as_bytes());
+        return hex_hash
+    }
+    fn data_as_hash(data: &[u8]) -> Vec<u8> {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let bytes = hash.as_bytes();
+        return bytes.to_vec()
     }
 }
 impl Keypairs for Falcon1024Keypair {
@@ -475,9 +698,10 @@ impl Keypairs for Falcon1024Keypair {
         return hex::decode(&self.public_key).unwrap()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
+        log::warn!("[WARN|0x1002] The Secret Key For a FALCON1024 Keypair Was Just Returned In Bytes Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign(&self,message: &str) -> Signature {
+    fn sign_str(&self,message: &str) -> Signature {
         let x = falcon1024::detached_sign(message.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         
         return Signature {
@@ -485,7 +709,44 @@ impl Keypairs for Falcon1024Keypair {
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            is_signed_hash: false,
         }
+    }
+    fn sign_hash(&self,data: &[u8]) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data);
+        let signature = falcon1024::detached_sign(hex_hash.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.public_key.clone(),
+            message: hex_hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_signed_hash: true,
+        }
+    }
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
+        let h = hex::decode(s);
+        match h {
+            Ok(v) => return Ok(v),
+            Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
+        }
+    }
+    fn return_public_key_as_hex(&self) -> String {
+        return self.public_key.clone()
+    }
+    fn return_secret_key_as_hex(&self) -> String {
+        log::warn!("[WARN|0x1002] The Secret Key For a FALCON1024 Keypair Was Just Returned In Hexadecimal Form");
+        return self.private_key.clone()
+    }
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let hex_hash: String = hex::encode_upper(hash.as_bytes());
+        return hex_hash
+    }
+    fn data_as_hash(data: &[u8]) -> Vec<u8> {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let bytes = hash.as_bytes();
+        return bytes.to_vec()
     }
 }
 impl Keypairs for SphincsKeypair {
@@ -517,27 +778,66 @@ impl Keypairs for SphincsKeypair {
         return hex::decode(&self.public_key).unwrap()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
+        log::warn!("[WARN|0x1000] The Secret Key For a SPHINCS+ Keypair Was Just Returned In Byte Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign(&self,message: &str) -> Signature {
+    fn sign_str(&self,message: &str) -> Signature {
         let x = sphincsshake256256srobust::detached_sign(message.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
             public_key: self.public_key.clone(), // Public Key Hex
             message: String::from(message), // Original UTF-8 Message
             signature: base64::encode(x.as_bytes()), // Base64-Encoded Detatched Signature
+            is_signed_hash: false,
         }
+    }
+    fn sign_hash(&self,data: &[u8]) -> Signature {
+        let hex_hash = Self::data_as_hexadecimal_hash(data);
+        let signature = sphincsshake256256srobust::detached_sign(hex_hash.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.public_key.clone(),
+            message: hex_hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_signed_hash: true,
+        }
+    }
+    fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
+        let h = hex::decode(s);
+        match h {
+            Ok(v) => return Ok(v),
+            Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
+        }
+    }
+    fn return_public_key_as_hex(&self) -> String {
+        return self.public_key.clone()
+    }
+    fn return_secret_key_as_hex(&self) -> String {
+        log::warn!("[WARN|0x1000] The Secret Key For a SPHINCS+ Keypair Was Just Returned In Hexadecimal Form");
+        return self.private_key.clone()
+    }
+    fn data_as_hexadecimal_hash(data: &[u8]) -> String {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let hex_hash: String = hex::encode_upper(hash.as_bytes());
+        return hex_hash
+    }
+    fn data_as_hash(data: &[u8]) -> Vec<u8> {
+        let hash: Blake2bResult = blake2b(64, &[], data);
+        let bytes = hash.as_bytes();
+        return bytes.to_vec()
     }
 }
 
 impl Signatures for Signature {
     fn new(algorithm: &str, pk: &str, signature: &str, message: &str) -> Self {
-        if algorithm == "SPHINCS+" || algorithm == "FALCON512" || algorithm == "FALCON1024" {
+        if algorithm == "SPHINCS+" || algorithm == "FALCON512" || algorithm == "FALCON1024" || algorithm == "ED25519" || algorithm == "BLS12_381" {
             return Signature {
                 algorithm: algorithm.to_owned(),
                 public_key: pk.to_owned(),
                 message: message.to_owned(),
                 signature: signature.to_owned(),
+                is_signed_hash: false,
             }
         }
         else {
@@ -611,7 +911,7 @@ impl Signatures for Signature {
             return is_valid
         }
         else {
-            panic!("Cannot Read Algorithm Type")
+            panic!("[Verification|0x0000] Invalid Algorithm Type")
         }
     }
     fn deserialize(yaml: &str) -> Self {
@@ -667,7 +967,8 @@ impl Verify {
     /// Verifies Signatures by constructing them and returns a boolean.
     /// 
     /// Currently does not allow verification of ED25519 (non pq crypto)
-    pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str) -> bool {
+    pub fn new(algorithm: KeypairAlgorithms,pk: &str,signature: &str,message: &str,is_signed_hash: bool) -> bool {
+        
         let alg = match algorithm {
             KeypairAlgorithms::FALCON512 => "FALCON512",
             KeypairAlgorithms::FALCON1024 => "FALCON1024",
@@ -677,6 +978,12 @@ impl Verify {
             KeypairAlgorithms::ED25519 => "ED25519",
             KeypairAlgorithms::BLS12_381 => "BLS12_381",
         };
+
+        log::info!("[INFO] Verifying Digital Signature: {}",&alg);
+        log::info!("Public Key: {}",pk);
+        log::info!("Signature: {}",signature);
+        log::info!("Message: {}",message);
+
         // PK (HEX) | SIG (BASE64) | MESSAGE 
         let pk_bytes = hex::decode(pk).unwrap();
         let signature_bytes = base64::decode(signature).unwrap();

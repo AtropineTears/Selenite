@@ -8,6 +8,8 @@
 
 /// The Core Module For Interacting With Keypairs/Signatures Through Their Traits.
 pub mod constants;
+pub mod sel_errors;
+
 pub mod crypto;
 pub mod certificate;
 pub mod random;
@@ -32,19 +34,19 @@ mod tests {
         println!("{}",x.public_key);
         println!();
 
-        let sig = keypair.sign("Hello");
+        let sig = keypair.sign_str("Hello");
         sig.verify();
     }
     #[test]
     fn sphincs_plus(){
         let keypair = SphincsKeypair::new();
-        let signature = keypair.sign("FFDE");
+        let signature = keypair.sign_str("FFDE");
         signature.verify();
     }
     #[test]
     fn get_keypair_size(){
         let keypair = SphincsKeypair::new();
-        let sig = keypair.sign("DJNASJNDASNJNJDSJNNJASDNJNJADSJNIDJNIJINEDJNNJIDENJDE");
+        let sig = keypair.sign_str("DJNASJNDASNJNJDSJNNJASDNJNJADSJNIDJNIJINEDJNNJIDENJDE");
         
         let is_verified = sig.verify();
         
