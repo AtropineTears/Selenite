@@ -16,7 +16,8 @@ Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/i
 
 * SPHINCS+
 * FALCON512 and FALCON1024
-* ED25519**<sup>*</sup>**
+* ED25519<sup>*</sup>
+* BLS12_381<sup>*</sup>
 
 \*: Not Post-Quantum Cryptography
 
@@ -108,6 +109,27 @@ fn main(){
     
     // Returns a boolean representing whether the signature is valid or not
     let is_verified = signature.verify();
+}
+```
+
+### BLS12_381
+
+BLS12_381 is a pairing friendly elliptic curve that allows aggregation of signatures. Aggregation of signatures allow you to combine multiple signatures into a single one. Selenite supports aggregation (although it is still in the works).
+
+```rust
+use selenite::crypto::*;
+
+fn main() {
+    let keypair = BLSKeypair::new();
+    
+    let keypair2 = BLSKeypair::new();
+    
+    let signature = keypair.sign("This message is being signed by BLS12_381");
+    
+    let signature2 = keypair2.sign("This message is also being signed by BLS12_381");
+    
+    let is_verified = signature.verify();
+       
 }
 ```
 
