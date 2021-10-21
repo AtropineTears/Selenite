@@ -17,7 +17,7 @@ impl CreateCertificate {
 
         // Introduction
         println!("Selenite Key Generation (v0.1.0):")
-        println!("by @AtropineTears | OpenNightshade")
+        println!("by @AtropineTears | SilentNightshade")
         println!();
         println!("Do you want to Generate a SimpleCertificate for Code-Signing [y/n]: ")
         let input = io::stdin()

@@ -14,4 +14,4 @@ pub const SIGNATURE_ALGORITHM_FALCON_1024: &str = "FALCON1024";
 
 
 // My Words
-pub const SELENITE_DEVELOPER_ANNOUNCEMENT: &str = "Developed by @AtropineTears with the company OpenNightshade | Date: 10 Sept 2021";
+pub const SELENITE_DEVELOPER_ANNOUNCEMENT: &str = "Developed by @AtropineTears with the company SilentNightshade | Date: 10 Sept 2021";

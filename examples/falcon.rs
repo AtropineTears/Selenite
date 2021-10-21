@@ -8,7 +8,7 @@ fn main(){
     let keypair2 = Falcon1024Keypair::new();
     
     // Mutable Signature For Keypair To Sign "Hello World!" as UTF-8 String
-    let mut signature = keypair.sign_str("Hello World!");
+    let mut signature = keypair.sign("Hello World!");
     
     // Change Message String From "Hello World!" to "Goodbye World!"
     signature.message = "Goodbye World!".to_string();

@@ -1,6 +1,12 @@
 //! # Selenite
 //! 
 //! Lacuna's Core Library consists of all the core components for Lacuna.
+//! 
+//! Selenite consists of post-quantum cryptography including:
+//! 
+//! * Hash-Based Cryptography (SPHINCS+)
+//! 
+//! * Lattice-Based Cryptography (FALCON512/FALCON1024)
 
 // Denys The Usage of Unsafe Code and Allows non_camel_case_types 
 #[allow(non_camel_case_types)]
@@ -34,19 +40,19 @@ mod tests {
         println!("{}",x.public_key);
         println!();
 
-        let sig = keypair.sign_str("Hello");
+        let sig = keypair.sign("Hello");
         sig.verify();
     }
     #[test]
     fn sphincs_plus(){
         let keypair = SphincsKeypair::new();
-        let signature = keypair.sign_str("FFDE");
+        let signature = keypair.sign("FFDE");
         signature.verify();
     }
     #[test]
     fn get_keypair_size(){
         let keypair = SphincsKeypair::new();
-        let sig = keypair.sign_str("DJNASJNDASNJNJDSJNNJASDNJNJADSJNIDJNIJINEDJNNJIDENJDE");
+        let sig = keypair.sign("DJNASJNDASNJNJDSJNNJASDNJNJADSJNIDJNIJINEDJNNJIDENJDE");
         
         let is_verified = sig.verify();
         

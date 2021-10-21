@@ -54,6 +54,7 @@
 //! [Falcon-Sign](https://falcon-sign.info/)
 
 // Errors
+use std::path::Path;
 use blake2_rfc::blake2b::Blake2bResult;
 use crate::sel_errors::SeleniteErrors;
 
@@ -86,6 +87,12 @@ use bls_signatures::Serialize as Ser;
 use blake2_rfc::blake2b::{Blake2b,blake2b};
 
 use ed25519_dalek::*;
+
+use std::io;
+use std::io::Read;
+use std::io::BufReader;
+use std::fs::File;
+use std::fs::read;
 
 use crate::random::OsRandom;
 
@@ -166,12 +173,17 @@ pub trait Keypairs {
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors>;
     /// ## Keypair Signing
     /// Allows Signing of an Input Using The Keyholder's Secret Key and Returns The Struct Signature.
-    fn sign_str(&self,message: &str) -> Signature;
+    fn sign(&self,message: &str) -> Signature;
 
     /// ## Sign (with Hash)
     /// 
     /// Signing bytes using `sign_data()` with Hash takes as input a slice of bytes. It then signs the hash of the bytes as opposed to signing the actual bytes.
     fn sign_data<T: AsRef<[u8]>>(&self, data: T) -> Signature;
+
+    /// ## Sign File
+    /// 
+    /// This method lets you sign a file by signing the file's hash.
+    fn sign_file<T: AsRef<Path>>(&self, path: T) -> Result<Signature,SeleniteErrors>;
 
     /// ## Data as Hexadecimal Hash
     /// 
@@ -208,6 +220,12 @@ pub trait Signatures {
     /// # [Security] Matches Signatures
     /// This will match the signature in the struct with a provided signature (in base64 format)
     fn compare_signature(&self,signature: String) -> bool;
+}
+
+pub struct BLSAggregatedSignature {
+    pk: Vec<String>,
+    messages: Vec<String>,
+    signature: String,
 }
 
 /// ## SPHINCS+ (SHAKE256) Keypair
@@ -262,6 +280,12 @@ pub struct ED25519Keypair {
 }
 
 /// ## BLS12_381 Curve
+/// ### Description
+/// 
+/// The BLS12_381 Curve is an elliptic curve based crypto that is not post-quantum cryptography but provides **signature aggregation** that is useful in many applications.
+/// ### Developer Notes
+/// 
+/// Instead of storing itself in a Hexadecimal String, the private key and public key is stored as a byte array
 #[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
 pub struct BLSKeypair {
     pub algorithm: String,
@@ -281,7 +305,7 @@ pub struct BLSKeypair {
 ///     let keypair = Falcon1024Keypair::new();
 /// 
 ///     // Signs The Message as a UTF-8 Encoded String
-///     let mut sig = keypair.sign_str("message_to_sign");
+///     let mut sig = keypair.sign("message_to_sign");
 ///     
 ///     // Returns a boolean representing whether the signature is valid or not
 ///     let is_verified = sig.verify();
@@ -305,7 +329,7 @@ pub struct Falcon1024Keypair {
 ///     let keypair = Falcon512Keypair::new();
 /// 
 ///     // Signs The Message as a UTF-8 Encoded String
-///     let mut sig = keypair.sign_str("message_to_sign");
+///     let mut sig = keypair.sign("message_to_sign");
 ///     
 ///     // Returns a boolean representing whether the signature is valid or not
 ///     let is_verified = sig.verify();
@@ -431,9 +455,9 @@ impl Keypairs for BLSKeypair {
             Err(_) => return Err(SeleniteErrors::DecodingFromHexFailed)
         }
     }
-    fn sign_str(&self,message: &str) -> Signature {
+    fn sign(&self,message: &str) -> Signature {
         let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
-        let signature = key.sign(message);
+        let signature = key.sign(message.as_bytes());
 
         // Encoded In Hexadecimal
         let final_signature = base64::encode(signature.as_bytes());
@@ -448,6 +472,7 @@ impl Keypairs for BLSKeypair {
         }
 
     }
+    // Signs hexadecimal string
     fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
         let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("[BLS12_381|0x0003] Failed To Deserialize Private Key For BLS12_381");
         let final_hash = Self::data_as_hexadecimal_hash(data.as_ref());
@@ -461,12 +486,37 @@ impl Keypairs for BLSKeypair {
 
 
         return Signature {
-            algorithm: self.algorithm.clone(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: pk,
             message: final_hash,
             signature: final_signature,
             is_str: false,
         }
+
+    }
+    // Signs hexadecimal string
+    fn sign_file<T: AsRef<Path>>(&self, path: T) -> Result<Signature,SeleniteErrors> {
+        let does_file_exist: bool = path.as_ref().exists();
+
+        if does_file_exist == false {
+            return Err(SeleniteErrors::FileDoesNotExist)
+        }
+
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
+
+        
+        let fbuffer = std::fs::read(path).expect("[Error] failed to open file");
+        let hash = Self::data_as_hexadecimal_hash(&fbuffer);
+
+        let signature = key.sign(&hash);
+
+        return Ok(Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.return_public_key_as_hex(),
+            message: hash,
+            signature: base64::encode(&signature.as_bytes()),
+            is_str: false
+        })
 
     }
     fn data_as_hexadecimal_hash(data: &[u8]) -> String {
@@ -523,7 +573,7 @@ impl Keypairs for ED25519Keypair{
         log::warn!("[WARN|0x1003] The Secret Key For a ED25519 Keypair Was Just Returned In Hexadecimal Form");
         return hex::encode_upper(&self.private_key)
     }
-    fn sign_str(&self, message: &str) -> Signature {
+    fn sign(&self, message: &str) -> Signature {
         let mut vector1: Vec<u8> = self.private_key.clone();
         let mut vector2: Vec<u8> = self.public_key.clone();
 
@@ -544,6 +594,7 @@ impl Keypairs for ED25519Keypair{
             is_str: true,
         }
     }
+    // Signs Hexadecimal String
     fn sign_data<T: AsRef<[u8]>>(&self, data: T) -> Signature {
         // Hash Message As Blake2b (64 bytes)
         let final_message_hash = Self::data_as_hexadecimal_hash(data.as_ref());
@@ -561,7 +612,7 @@ impl Keypairs for ED25519Keypair{
 
         // Keypair
         let keypair = ed25519_dalek::Keypair::from_bytes(&vector_keypair).unwrap();
-        let sig: ed25519_dalek::Signature = keypair.sign(&hex::decode(&final_message_hash).expect("[ED25519|0x0000] Failed To Decode From Hexadecimal For ED25519 Signing Hash"));
+        let sig: ed25519_dalek::Signature = keypair.sign(&final_message_hash.as_bytes());
 
 
         return Signature {
@@ -572,6 +623,39 @@ impl Keypairs for ED25519Keypair{
 
             is_str: false,
         }
+    }
+    // Signs Hexadecimal String
+    fn sign_file<T: AsRef<Path>>(&self, path: T) -> Result<Signature,SeleniteErrors> {
+        let does_file_exist: bool = path.as_ref().exists();
+
+        if does_file_exist == false {
+            return Err(SeleniteErrors::FileDoesNotExist)
+        }
+
+        let mut vector1: Vec<u8> = self.private_key.clone();
+        let mut vector2: Vec<u8> = self.public_key.clone();
+
+        // Init Keypair Vector
+        let mut vector_keypair: Vec<u8> = vec![];
+        // Append To Vector
+        vector_keypair.append(&mut vector1);
+        vector_keypair.append(&mut vector2);
+
+        let keypair = ed25519_dalek::Keypair::from_bytes(&vector_keypair).unwrap();
+        
+        let fbuffer = std::fs::read(path).expect("[Error] failed to open file");
+        let hash = Self::data_as_hexadecimal_hash(&fbuffer);
+
+        let sig: ed25519_dalek::Signature = keypair.sign(&hash.as_bytes());
+
+
+        return Ok(Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.return_public_key_as_hex(),
+            message: hash,
+            signature: base64::encode(sig),
+            is_str: false
+        })
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
         let h = hex::decode(s);
@@ -624,7 +708,7 @@ impl Keypairs for Falcon512Keypair {
         log::warn!("[WARN|0x1001] The Secret Key For a FALCON512 Keypair Was Just Returned In Bytes Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign_str(&self,message: &str) -> Signature {
+    fn sign(&self,message: &str) -> Signature {
         let x = falcon512::detached_sign(message.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         
         return Signature {
@@ -635,6 +719,7 @@ impl Keypairs for Falcon512Keypair {
             is_str: true,
         }
     }
+    // Signs Hexadecimal Hash (as bytes)
     fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
         let hex_hash = Self::data_as_hexadecimal_hash(data.as_ref());
         let signature = falcon512::detached_sign(hex_hash.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
@@ -646,6 +731,27 @@ impl Keypairs for Falcon512Keypair {
             signature: base64::encode(signature.as_bytes()),
             is_str: false,
         }
+    }
+    // Signs hexadecimal hash (as bytes)
+    fn sign_file<T: AsRef<Path>>(&self,path: T) -> Result<Signature,SeleniteErrors> {
+        let does_file_exist: bool = path.as_ref().exists();
+
+        if does_file_exist == false {
+            return Err(SeleniteErrors::FileDoesNotExist)
+        }
+
+        let fbuffer = std::fs::read(path.as_ref()).expect("[Error] failed to open file");
+        let hash = Self::data_as_hexadecimal_hash(&fbuffer);
+
+        let signature = falcon512::detached_sign(hash.as_bytes(), &falcon512::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Ok(Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.return_public_key_as_hex(),
+            message: hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_str: false,
+        })
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
         let h = hex::decode(s);
@@ -704,7 +810,7 @@ impl Keypairs for Falcon1024Keypair {
         log::warn!("[WARN|0x1002] The Secret Key For a FALCON1024 Keypair Was Just Returned In Bytes Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign_str(&self,message: &str) -> Signature {
+    fn sign(&self,message: &str) -> Signature {
         let x = falcon1024::detached_sign(message.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         
         return Signature {
@@ -726,6 +832,26 @@ impl Keypairs for Falcon1024Keypair {
             signature: base64::encode(signature.as_bytes()),
             is_str: false,
         }
+    }
+    fn sign_file<T: AsRef<Path>>(&self,path: T) -> Result<Signature,SeleniteErrors> {
+        let does_file_exist: bool = path.as_ref().exists();
+
+        if does_file_exist == false {
+            return Err(SeleniteErrors::FileDoesNotExist)
+        }
+
+        let fbuffer = std::fs::read(path.as_ref()).expect("[Error] failed to open file");
+        let hash = Self::data_as_hexadecimal_hash(&fbuffer);
+
+        let signature = falcon1024::detached_sign(hash.as_bytes(), &falcon1024::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Ok(Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.return_public_key_as_hex(),
+            message: hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_str: false,
+        })
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
         let h = hex::decode(s);
@@ -784,7 +910,7 @@ impl Keypairs for SphincsKeypair {
         log::warn!("[WARN|0x1000] The Secret Key For a SPHINCS+ Keypair Was Just Returned In Byte Form");
         return hex::decode(&self.private_key).unwrap()
     }
-    fn sign_str(&self,message: &str) -> Signature {
+    fn sign(&self,message: &str) -> Signature {
         let x = sphincsshake256256srobust::detached_sign(message.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
         return Signature {
             algorithm: String::from(Self::ALGORITHM), // String
@@ -805,6 +931,26 @@ impl Keypairs for SphincsKeypair {
             signature: base64::encode(signature.as_bytes()),
             is_str: false,
         }
+    }
+    fn sign_file<T: AsRef<Path>>(&self,path: T) -> Result<Signature,SeleniteErrors> {
+        let does_file_exist: bool = path.as_ref().exists();
+
+        if does_file_exist == false {
+            return Err(SeleniteErrors::FileDoesNotExist)
+        }
+
+        let fbuffer = std::fs::read(path.as_ref()).expect("[Error] failed to open file");
+        let hash = Self::data_as_hexadecimal_hash(&fbuffer);
+
+        let signature = sphincsshake256256srobust::detached_sign(hash.as_bytes(), &sphincsshake256256srobust::SecretKey::from_bytes(&self.secret_key_as_bytes()).unwrap());
+
+        return Ok(Signature {
+            algorithm: String::from(Self::ALGORITHM),
+            public_key: self.return_public_key_as_hex(),
+            message: hash,
+            signature: base64::encode(signature.as_bytes()),
+            is_str: false,
+        })
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
         let h = hex::decode(s);
@@ -965,6 +1111,7 @@ impl Signatures for Signature {
         }
     }
 }
+
 impl Verify {
     /// ## Verification
     /// Verifies Signatures by constructing them and returns a boolean.

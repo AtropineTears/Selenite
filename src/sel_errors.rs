@@ -4,4 +4,6 @@ use serde::{Serialize,Deserialize};
 pub enum SeleniteErrors {
     BLSAggregationFailed,
     DecodingFromHexFailed,
+    FailedToGetFile,
+    FileDoesNotExist,
 }
