@@ -193,6 +193,11 @@ pub trait Keypairs {
     /// 
     /// This function returns the hash of the data as a vector of bytes
     fn data_as_hash(data: &[u8]) -> Vec<u8>;
+
+    /// ## From
+    /// 
+    /// Converts from hexadecimal public key + private key to the respected struct. Also requires the algorithm to be known.
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self;
 }
 /// # Traits For Signatures
 /// 
@@ -529,6 +534,13 @@ impl Keypairs for BLSKeypair {
         let bytes: Vec<u8> = hash.as_bytes().to_vec();
         return bytes
     }
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+        return Self {
+            algorithm: algorithm.as_ref().to_string(),
+            public_key: hex::decode(pk.as_ref()).expect("[Error] Failed To Decode Public Key From Hex"),
+            private_key: hex::decode(sk.as_ref()).expect("[Error] Failed To Decode Secret Key From Hex"),
+        }
+    }
 }
 
 impl Keypairs for ED25519Keypair{
@@ -674,6 +686,13 @@ impl Keypairs for ED25519Keypair{
         let bytes = hash.as_bytes().to_vec();
         return bytes
     }
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+        return Self {
+            algorithm: algorithm.as_ref().to_string(),
+            public_key: hex::decode(pk.as_ref()).expect("[Error] Failed To Decode Public Key From Hex"),
+            private_key: hex::decode(sk.as_ref()).expect("[Error] Failed To Decode Secret Key From Hex"),
+        }
+    }
 }
 
 impl Keypairs for Falcon512Keypair {
@@ -777,6 +796,13 @@ impl Keypairs for Falcon512Keypair {
         let bytes = hash.as_bytes();
         return bytes.to_vec()
     }
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+        return Self {
+            algorithm: algorithm.as_ref().to_string(),
+            public_key: pk.as_ref().to_string(),
+            private_key: sk.as_ref().to_string(),
+        }
+    }
 }
 impl Keypairs for Falcon1024Keypair {
     const VERSION: usize = 0;
@@ -877,6 +903,13 @@ impl Keypairs for Falcon1024Keypair {
         let bytes = hash.as_bytes();
         return bytes.to_vec()
     }
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+        return Self {
+            algorithm: algorithm.as_ref().to_string(),
+            public_key: pk.as_ref().to_string(),
+            private_key: sk.as_ref().to_string(),
+        }
+    }
 }
 impl Keypairs for SphincsKeypair {
     const VERSION: usize = 0;
@@ -975,6 +1008,13 @@ impl Keypairs for SphincsKeypair {
         let hash: Blake2bResult = blake2b(64, &[], data);
         let bytes = hash.as_bytes();
         return bytes.to_vec()
+    }
+    fn from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+        return Self {
+            algorithm: algorithm.as_ref().to_string(),
+            public_key: pk.as_ref().to_string(),
+            private_key: sk.as_ref().to_string(),
+        }
     }
 }
 
