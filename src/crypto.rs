@@ -197,7 +197,7 @@ pub trait Keypairs {
     /// ## From
     /// 
     /// Converts from hexadecimal public key + private key to the respected struct. Also requires the algorithm to be known.
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self;
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self;
 }
 /// # Traits For Signatures
 /// 
@@ -534,9 +534,9 @@ impl Keypairs for BLSKeypair {
         let bytes: Vec<u8> = hash.as_bytes().to_vec();
         return bytes
     }
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self {
         return Self {
-            algorithm: algorithm.as_ref().to_string(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: hex::decode(pk.as_ref()).expect("[Error] Failed To Decode Public Key From Hex"),
             private_key: hex::decode(sk.as_ref()).expect("[Error] Failed To Decode Secret Key From Hex"),
         }
@@ -686,9 +686,9 @@ impl Keypairs for ED25519Keypair{
         let bytes = hash.as_bytes().to_vec();
         return bytes
     }
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self {
         return Self {
-            algorithm: algorithm.as_ref().to_string(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: hex::decode(pk.as_ref()).expect("[Error] Failed To Decode Public Key From Hex"),
             private_key: hex::decode(sk.as_ref()).expect("[Error] Failed To Decode Secret Key From Hex"),
         }
@@ -796,9 +796,9 @@ impl Keypairs for Falcon512Keypair {
         let bytes = hash.as_bytes();
         return bytes.to_vec()
     }
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self {
         return Self {
-            algorithm: algorithm.as_ref().to_string(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: pk.as_ref().to_string(),
             private_key: sk.as_ref().to_string(),
         }
@@ -903,9 +903,9 @@ impl Keypairs for Falcon1024Keypair {
         let bytes = hash.as_bytes();
         return bytes.to_vec()
     }
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self {
         return Self {
-            algorithm: algorithm.as_ref().to_string(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: pk.as_ref().to_string(),
             private_key: sk.as_ref().to_string(),
         }
@@ -1009,9 +1009,9 @@ impl Keypairs for SphincsKeypair {
         let bytes = hash.as_bytes();
         return bytes.to_vec()
     }
-    fn construct_from<T: AsRef<str>>(pk: T, sk: T, algorithm: T) -> Self {
+    fn construct_from<T: AsRef<str>>(pk: T, sk: T) -> Self {
         return Self {
-            algorithm: algorithm.as_ref().to_string(),
+            algorithm: String::from(Self::ALGORITHM),
             public_key: pk.as_ref().to_string(),
             private_key: sk.as_ref().to_string(),
         }
