@@ -13,16 +13,16 @@
 This error occurs during verification if the algorithm is invalid. Accepted algorithms are:
 
 * ED25519
-* BLS12_381
+* BLS
 * FALCON512
 * FALCON1024
 * SPHINCS+
 
-## BLS12_381
+## BLS
 
 ### 0x0000
 
-`BLS12_381|0x0000`
+`BLS|0x0000`
 
 > Failed To Decode From Base64 During Aggregation of Signatures
 
@@ -30,7 +30,7 @@ This is due to unwrapping the result from the Base64 decoding process in the `ag
 
 ### 0x0001
 
-`BLS12_381|0x0001`
+`BLS|0x0001`
 
 > Failed To Convert To `bls_signature::Signature` when converting from bytes.
 
@@ -38,7 +38,7 @@ This error occurs when constructing the BLS Signature struct in the aggregation 
 
 ### 0x0002
 
-`BLS12_381|0x0002`
+`BLS|0x0002`
 
 > No Signatures Provided To Aggregation Function
 
@@ -88,5 +88,5 @@ The **secret key** was returned for ED25519. This is logged as `0x1003`
 
 `WARN|0x1004`
 
-The **secret key** was returned for BLS12_381. This is logged as `0x1004`
+The **secret key** was returned for BLS. This is logged as `0x1004`
 
