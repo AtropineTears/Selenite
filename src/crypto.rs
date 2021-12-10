@@ -99,6 +99,8 @@ use crate::random::OsRandom;
 
 use std::convert::TryInto;
 
+pub use zeroize::Zeroize;
+
 
 
 //===INFORMATION===
@@ -277,7 +279,8 @@ pub struct SphincsKeypair {
 /// 
 /// }
 /// ```
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default,Zeroize)]
+#[zeroize(drop)]
 pub struct ED25519Keypair {
     pub algorithm: String,
     pub public_key: Vec<u8>,
@@ -291,7 +294,8 @@ pub struct ED25519Keypair {
 /// ### Developer Notes
 /// 
 /// Instead of storing itself in a Hexadecimal String, the private key and public key is stored as a byte array
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default,Zeroize)]
+#[zeroize(drop)]
 pub struct BLSKeypair {
     pub algorithm: String,
     pub public_key: Vec<u8>,
@@ -316,7 +320,8 @@ pub struct BLSKeypair {
 ///     let is_verified = sig.verify();
 /// }
 /// ```
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default,Zeroize)]
+#[zeroize(drop)]
 pub struct Falcon1024Keypair {
     pub algorithm: String,
     pub public_key: String,
@@ -340,7 +345,8 @@ pub struct Falcon1024Keypair {
 ///     let is_verified = sig.verify();
 /// }
 /// ```
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default,Zeroize)]
+#[zeroize(drop)]
 pub struct Falcon512Keypair {
     pub algorithm: String,
     pub public_key: String,
@@ -349,7 +355,8 @@ pub struct Falcon512Keypair {
 /// ## The Signature Struct
 /// 
 /// This struct contains the fields for signatures and implements the Signatures trait to allow methods on the struct.
-#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default)]
+#[derive(Serialize,Deserialize,Clone,Debug,PartialEq,PartialOrd,Hash,Default,Zeroize)]
+#[zeroize(drop)]
 pub struct Signature {
     pub algorithm: String,
     pub public_key: String,
@@ -1257,4 +1264,10 @@ impl Verify {
             return KeypairAlgorithms::FALCON1024
         }
     }
+}
+
+#[test]
+fn generate(){
+    let mut keypair = BLSKeypair::new();
+    keypair.zeroize();
 }

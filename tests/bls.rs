@@ -34,7 +34,7 @@ fn bls_aggregate(){
 
     println!("Sig1: {:?}",base64::decode(&sig.signature).expect("Failed"));
 
-    let output_sig = BLSKeypair::aggregate(vec![sig.signature,sig2.signature,sig3.signature]).expect("Failed");
+    let output_sig = BLSKeypair::aggregate(vec![sig.signature.clone(),sig2.signature.clone(),sig3.signature.clone()]).expect("Failed");
     println!("Output Sig: {:?}",output_sig)
 
 }

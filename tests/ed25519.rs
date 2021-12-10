@@ -3,7 +3,7 @@ use selenite::crypto::*;
 #[test]
 fn test_ed_sig(){
     let keypair = ED25519Keypair::new();
-    let mut signature = keypair.sign("This message is being signed");
+    let signature = keypair.sign("This message is being signed");
     let is_verified = signature.verify();
 
     assert!(is_verified);
