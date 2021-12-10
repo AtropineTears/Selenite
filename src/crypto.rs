@@ -127,7 +127,7 @@ pub enum KeypairAlgorithms {
     SPHINCS_PLUS,
 
     ED25519,
-    BLS12_381,
+    BLS,
 }
 
 pub enum SignatureType {
@@ -284,10 +284,10 @@ pub struct ED25519Keypair {
     pub private_key: Vec<u8>,
 }
 
-/// ## BLS12_381 Curve
+/// ## BLS Curve
 /// ### Description
 /// 
-/// The BLS12_381 Curve is an elliptic curve based crypto that is not post-quantum cryptography but provides **signature aggregation** that is useful in many applications.
+/// The BLS Curve is an elliptic curve based crypto that is not post-quantum cryptography but provides **signature aggregation** that is useful in many applications.
 /// ### Developer Notes
 /// 
 /// Instead of storing itself in a Hexadecimal String, the private key and public key is stored as a byte array
@@ -366,13 +366,13 @@ impl BLSKeypair {
     /// 
     /// **Note:** Signatures must be in Base64 format.
     /// 
-    /// **Info:** Aggregation is only allowed for BLS12_381 (BLSKeypair).
+    /// **Info:** Aggregation is only allowed for BLS (BLSKeypair).
     /// 
     /// ---
     /// 
     /// ### Description
     /// 
-    /// This function aggregates (or combines) Base64-encoded signatures for BLS12_381 (`BLSKeypair`). This can be used to reduce the number of signatures into a single signature.
+    /// This function aggregates (or combines) Base64-encoded signatures for BLS (`BLSKeypair`). This can be used to reduce the number of signatures into a single signature.
     /// 
     /// ---
     /// ### Errors
@@ -382,29 +382,29 @@ impl BLSKeypair {
         let num_of_signatures = signatures.len();
         let mut v: Vec<bls_signatures::Signature> = vec![];
 
-        log::info!("[INFO] BLS12_381: Aggregating Digital Signatures.");
-        log::info!("[INFO] BLS12_381: Aggregating {} Signatures Into A Single Signature.",num_of_signatures);
+        log::info!("[INFO] BLS: Aggregating Digital Signatures.");
+        log::info!("[INFO] BLS: Aggregating {} Signatures Into A Single Signature.",num_of_signatures);
 
         if num_of_signatures == 0 {
-            log::error!("[ERROR] BLS12_381: No Signatures Provided To Aggregation Function. Operating Failed.");
-            panic!("[BLS12_381|0x0002] No Signatures Provided To Aggregation Function");
+            log::error!("[ERROR] BLS: No Signatures Provided To Aggregation Function. Operating Failed.");
+            panic!("[BLS|0x0002] No Signatures Provided To Aggregation Function");
         }
 
 
         for sig in signatures {
-            let decoded_sig = base64::decode(sig).expect("[BLS12_381|0x0000] Failed To Decode From Base64 During Aggregation of Signatures");
-            let final_signature = bls_signatures::Signature::from_bytes(&decoded_sig).expect("[BLS12_381|0x0001] Failed To Convert To `bls_signature::Signature` when converting from bytes.");
+            let decoded_sig = base64::decode(sig).expect("[BLS|0x0000] Failed To Decode From Base64 During Aggregation of Signatures");
+            let final_signature = bls_signatures::Signature::from_bytes(&decoded_sig).expect("[BLS|0x0001] Failed To Convert To `bls_signature::Signature` when converting from bytes.");
             v.push(final_signature);
         }
         let aggregated_signature = bls_signatures::aggregate(&v);
 
         match aggregated_signature {
             Ok(bls_sig) => {
-                log::info!("[INFO] BLS12_381: Finished Aggregation of Signatures. No Problems Detected.");
+                log::info!("[INFO] BLS: Finished Aggregation of Signatures. No Problems Detected.");
                 return Ok(bls_sig)
             }
             Err(_) => {
-                log::error!("[ERROR] Failed To Aggregate Signatures For BLS12_381 Signatures.");
+                log::error!("[ERROR] Failed To Aggregate Signatures For BLS Signatures.");
                 return Err(SeleniteErrors::BLSAggregationFailed)
             }
         }
@@ -413,7 +413,7 @@ impl BLSKeypair {
 
 impl Keypairs for BLSKeypair {
     const VERSION: usize = 0;
-    const ALGORITHM: &'static str = "BLS12_381";
+    const ALGORITHM: &'static str = "BLS";
     const PUBLIC_KEY_SIZE: usize = 48usize;
     const SECRET_KEY_SIZE: usize = 32usize;
     const SIGNATURE_SIZE: usize = 96usize;
@@ -443,14 +443,14 @@ impl Keypairs for BLSKeypair {
         return self.public_key.clone()
     }
     fn secret_key_as_bytes(&self) -> Vec<u8> {
-        log::warn!("[WARN|0x1004] The Secret Key For a BLS12_381 Keypair Was Just Returned In Bytes Form");
+        log::warn!("[WARN|0x1004] The Secret Key For a BLS Keypair Was Just Returned In Bytes Form");
         return self.private_key.clone()
     }
     fn return_public_key_as_hex(&self) -> String {
         return hex::encode_upper(&self.public_key)
     }
     fn return_secret_key_as_hex(&self) -> String {
-        log::warn!("[WARN|0x1004] The Secret Key For a BLS12_381 Keypair Was Just Returned In Hexadecimal Form");
+        log::warn!("[WARN|0x1004] The Secret Key For a BLS Keypair Was Just Returned In Hexadecimal Form");
         return hex::encode_upper(&self.private_key)
     }
     fn decode_from_hex(s: String) -> Result<Vec<u8>,SeleniteErrors> {
@@ -461,7 +461,7 @@ impl Keypairs for BLSKeypair {
         }
     }
     fn sign(&self,message: &str) -> Signature {
-        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS");
         let signature = key.sign(message.as_bytes());
 
         // Encoded In Hexadecimal
@@ -479,7 +479,7 @@ impl Keypairs for BLSKeypair {
     }
     // Signs hexadecimal string
     fn sign_data<T: AsRef<[u8]>>(&self,data: T) -> Signature {
-        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("[BLS12_381|0x0003] Failed To Deserialize Private Key For BLS12_381");
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("[BLS|0x0003] Failed To Deserialize Private Key For BLS");
         let final_hash = Self::data_as_hexadecimal_hash(data.as_ref());
 
         // Sign Hash of Data
@@ -507,7 +507,7 @@ impl Keypairs for BLSKeypair {
             return Err(SeleniteErrors::FileDoesNotExist)
         }
 
-        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS12_381");
+        let key = bls_signatures::PrivateKey::from_bytes(&self.private_key).expect("Failed To Deserialize Private Key For BLS");
 
         
         let fbuffer = std::fs::read(path).expect("[Error] failed to open file");
@@ -1020,7 +1020,7 @@ impl Keypairs for SphincsKeypair {
 
 impl Signatures for Signature {
     fn new(algorithm: &str, pk: &str, signature: &str, message: &str) -> Self {
-        if algorithm == "SPHINCS+" || algorithm == "FALCON512" || algorithm == "FALCON1024" || algorithm == "ED25519" || algorithm == "BLS12_381" {
+        if algorithm == "SPHINCS+" || algorithm == "FALCON512" || algorithm == "FALCON1024" || algorithm == "ED25519" || algorithm == "BLS" {
             return Signature {
                 algorithm: algorithm.to_owned(),
                 public_key: pk.to_owned(),
@@ -1088,8 +1088,8 @@ impl Signatures for Signature {
                 return false
             }
         }
-        else if self.algorithm == "BLS12_381" {
-            let base64_decoded = base64::decode(&self.signature).expect("Failed To Decoded Base64 For BLS12_381");
+        else if self.algorithm == "BLS" {
+            let base64_decoded = base64::decode(&self.signature).expect("Failed To Decoded Base64 For BLS");
             let hex_decoded = hex::decode(&self.public_key).expect("Failed To Decode Hexadecimal");
 
             let pk = bls_signatures::PublicKey::from_bytes(&hex_decoded).expect("Failed To Convert From Bytes To Signature In Verification Function For Public Key");
@@ -1166,7 +1166,7 @@ impl Verify {
             
             // Not Post-Quantum
             KeypairAlgorithms::ED25519 => "ED25519",
-            KeypairAlgorithms::BLS12_381 => "BLS12_381",
+            KeypairAlgorithms::BLS => "BLS",
         };
 
         log::info!("[INFO] Verifying Digital Signature: {}",&alg);
@@ -1226,13 +1226,13 @@ impl Verify {
                 Err(_) => return false,
             }
         }
-        else if alg == "BLS12_381" {
-            let pk = hex::decode(pk).expect("Failed To Decode Public Key For BLS12_381");
+        else if alg == "BLS" {
+            let pk = hex::decode(pk).expect("Failed To Decode Public Key For BLS");
             let sig = base64::decode(signature).expect("Failed To Decode Signature From Base64");
             let message_as_bytes = message.as_bytes();
 
-            let final_pk = bls_signatures::PublicKey::from_bytes(&pk).expect("Failed To Convert To Public Key For BLS12_381");
-            let final_sig = bls_signatures::Signature::from_bytes(&sig).expect("Failed To Convert To Signature For BLS12_381");
+            let final_pk = bls_signatures::PublicKey::from_bytes(&pk).expect("Failed To Convert To Public Key For BLS");
+            let final_sig = bls_signatures::Signature::from_bytes(&sig).expect("Failed To Convert To Signature For BLS");
 
             let is_valid: bool = bls_signatures::verify_messages(&final_sig, &vec![message_as_bytes], &[final_pk]);
 

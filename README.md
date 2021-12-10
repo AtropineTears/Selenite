@@ -112,9 +112,9 @@ fn main(){
 }
 ```
 
-### BLS12_381
+### BLS Signature
 
-BLS12_381 is a pairing friendly elliptic curve that allows aggregation of signatures. Aggregation of signatures allow you to combine multiple signatures into a single one. Selenite supports aggregation (although it is still in the works).
+BLS is a pairing friendly elliptic curve that allows aggregation of signatures. Aggregation of signatures allow you to combine multiple signatures into a single one. Selenite supports aggregation (although it is still in the works).
 
 ```rust
 use selenite::crypto::*;
@@ -124,9 +124,9 @@ fn main() {
     
     let keypair2 = BLSKeypair::new();
     
-    let signature = keypair.sign("This message is being signed by BLS12_381");
+    let signature = keypair.sign("This message is being signed by BLS");
     
-    let signature2 = keypair2.sign("This message is also being signed by BLS12_381");
+    let signature2 = keypair2.sign("This message is also being signed by BLS");
     
     let is_verified = signature.verify();
        
