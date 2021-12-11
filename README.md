@@ -17,7 +17,7 @@ Please read the [documentation](https://docs.rs/selenite/0.2.1/selenite/crypto/i
 * SPHINCS+
 * FALCON512 and FALCON1024
 * ED25519<sup>*</sup>
-* BLS12_381<sup>*</sup>
+* BLS<sup>*</sup>
 
 \*: Not Post-Quantum Cryptography
 
