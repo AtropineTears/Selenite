@@ -1269,5 +1269,22 @@ impl Verify {
 #[test]
 fn generate(){
     let mut keypair = BLSKeypair::new();
-    keypair.zeroize();
+    let sig1 = keypair.sign("Hello World");
+
+    let mut keypair2 = BLSKeypair::new();
+    let sig2 = keypair2.sign("Hello");
+
+    let f = sig1.signature_as_bytes();
+    let final_sig1 = bls_signatures::Signature::from_bytes(&f).unwrap();
+    let final_pk = bls_signatures::PublicKey::from_bytes(&keypair.public_key_as_bytes()).unwrap();
+
+    let g = sig2.signature_as_bytes();
+    let final_sig2 = bls_signatures::Signature::from_bytes(&g).unwrap();
+    let final_pk2 = bls_signatures::PublicKey::from_bytes(&keypair2.public_key_as_bytes()).unwrap();
+
+    let output = bls_signatures::aggregate(&vec![final_sig1,final_sig2]).unwrap();
+
+    let is_valid = bls_signatures::verify_messages(&output, &[b"Hello World",b"Hello"], &[final_pk,final_pk2]);
+
+    println!("Is Valid BLS Aggregation: {}",is_valid);
 }
